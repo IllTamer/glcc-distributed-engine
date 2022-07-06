@@ -9,9 +9,9 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>publish-consumer</artifactId>
+    <artifactId>rpc</artifactId>
 
-    <description>任务提交模块</description>
+    <description>项目内嵌rpc支持</description>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
@@ -20,9 +20,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>dev.jianmu.engine</groupId>
-            <artifactId>rpc</artifactId>
-            <version>${project.version}</version>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>${netty.version}</version>
         </dependency>
     </dependencies>
 
