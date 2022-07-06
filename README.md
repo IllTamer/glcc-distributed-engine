@@ -9,5 +9,5 @@
 
 #### 整体架构
 
-![架构图](doc/image/jianmu-taskengine%20架构图.png)
+![架构图](doc/image/jianmu-taskengine%20架构图.jpg)
 
