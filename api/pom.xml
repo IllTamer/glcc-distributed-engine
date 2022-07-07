@@ -25,6 +25,27 @@
         </dependency>
 
         <dependency>
+            <groupId>dev.jianmu.engine</groupId>
+            <artifactId>provider-provider</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.jianmu.engine</groupId>
+            <artifactId>publish-register</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.jianmu.engine</groupId>
+            <artifactId>publish-consumer</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.jianmu.engine</groupId>
+            <artifactId>publish-monitor</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
             <scope>runtime</scope>
