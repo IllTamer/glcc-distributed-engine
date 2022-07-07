@@ -23,7 +23,7 @@ public class SingletonFactory {
      * @apiNote 传入类必须有无参构造或已被注册
      * */
     @NotNull
-    public static <T> T getSingleton(Class<T> clazz) {
+    public static <T> T getInstance(Class<T> clazz) {
         if (clazz == null)
             throw new NullPointerException();
 
@@ -39,7 +39,7 @@ public class SingletonFactory {
      * 设置单例对象
      * @apiNote 若已存有对应实例则抛出异常
      * */
-    public static void setSingleton(Class<?> clazz, Object object) {
+    public static void setInstance(Class<?> clazz, Object object) {
         if (!clazz.isInstance(object))
             throw new WrongParserException("Mismatched class and instance");
         if (SINGLETONS.containsKey(clazz))
