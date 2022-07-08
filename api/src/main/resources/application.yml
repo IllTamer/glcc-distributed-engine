@@ -1,0 +1,6 @@
+server:
+  port: 80
+
+jianmu:
+  debug: true
+  serviceProvider: dev.jianmu.engine.rpc.provider.DefaultServiceProvider
