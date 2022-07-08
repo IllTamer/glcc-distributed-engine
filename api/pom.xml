@@ -5,12 +5,12 @@
     <parent>
         <artifactId>main</artifactId>
         <groupId>dev.jianmu.engine</groupId>
-        <version>0.0.1-SNAPSHOT</version>
+        <version>0.1.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>api</artifactId>
     <packaging>jar</packaging>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
 
     <description>通用接口</description>
 
