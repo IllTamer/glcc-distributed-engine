@@ -1,5 +1,8 @@
 package dev.jianmu.engine.rpc.serializer;
 
+import dev.jianmu.engine.rpc.exception.SerializeException;
+import org.jetbrains.annotations.NotNull;
+
 /**
  * 通用的序列化反序列化接口
  * */
@@ -19,6 +22,7 @@ public interface CommonSerializer {
 
     int getCode();
 
+    @NotNull
     static CommonSerializer getByCode(int code) {
         switch (code) {
             case JSON_SERIALIZER:
@@ -28,7 +32,7 @@ public interface CommonSerializer {
             case PROTOBUF_SERIALIZER:
                 return new ProtostuffSerializer();
             default:
-                return null;
+                throw new SerializeException("Unknown serialize code: " + code);
         }
     }
 

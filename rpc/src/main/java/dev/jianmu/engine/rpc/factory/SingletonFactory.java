@@ -1,6 +1,5 @@
 package dev.jianmu.engine.rpc.factory;
 
-import com.sun.org.apache.xml.internal.utils.WrongParserException;
 import dev.jianmu.engine.rpc.exception.InitializationException;
 import org.jetbrains.annotations.NotNull;
 
@@ -41,7 +40,7 @@ public class SingletonFactory {
      * */
     public static void setInstance(Class<?> clazz, Object object) {
         if (!clazz.isInstance(object))
-            throw new WrongParserException("Mismatched class and instance");
+            throw new InitializationException("Mismatched class and instance");
         if (SINGLETONS.containsKey(clazz))
             throw new KeyAlreadyExistsException();
         SINGLETONS.put(clazz, object);
