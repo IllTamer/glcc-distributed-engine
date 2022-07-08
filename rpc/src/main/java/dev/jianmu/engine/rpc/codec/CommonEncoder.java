@@ -1,8 +1,8 @@
 package dev.jianmu.engine.rpc.codec;
 
 import dev.jianmu.engine.rpc.PackageType;
-import dev.jianmu.engine.rpc.request.RpcRequest;
 import dev.jianmu.engine.rpc.serializer.CommonSerializer;
+import dev.jianmu.engine.rpc.translate.RpcRequest;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;

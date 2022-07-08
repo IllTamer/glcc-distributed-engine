@@ -1,6 +1,17 @@
 server:
   port: 80
 
+
 jianmu:
-  debug: true
-  serviceProvider: dev.jianmu.engine.rpc.provider.DefaultServiceProvider
+  engine:
+    debug: true
+    service:
+      register-port: 6666 # 8848
+      map:
+        hello: dev.jianmu.engine.api.service.impl.HelloServiceImpl
+      discoveries:
+        localhost: 8848
+spring:
+  devtools:
+    restart:
+      enabled: false

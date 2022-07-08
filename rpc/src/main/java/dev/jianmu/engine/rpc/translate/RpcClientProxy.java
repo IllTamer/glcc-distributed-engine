@@ -1,17 +1,14 @@
 package dev.jianmu.engine.rpc.translate;
 
-import dev.jianmu.engine.rpc.exception.AssertException;
-import dev.jianmu.engine.rpc.request.RpcRequest;
-import dev.jianmu.engine.rpc.response.RpcResponse;
 import dev.jianmu.engine.rpc.translate.client.NettyClient;
 import dev.jianmu.engine.rpc.util.Assert;
 import dev.jianmu.engine.rpc.util.RpcMessageChecker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -19,13 +16,15 @@ import java.util.concurrent.ExecutionException;
 /**
  * RPC 客户端动态代理
  * */
+@Slf4j
 public class RpcClientProxy implements InvocationHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(RpcClientProxy.class);
     private final NettyClient client;
+    private final Map<String, Class<?>> serviceMap;
 
-    public RpcClientProxy(NettyClient client) {
+    public RpcClientProxy(NettyClient client, Map<String, Class<?>> serviceMap) {
         this.client = client;
+        this.serviceMap = serviceMap;
     }
 
     /**
@@ -45,24 +44,34 @@ public class RpcClientProxy implements InvocationHandler {
      * */
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) {
-        logger.debug("调用方法：{}#{}", method.getDeclaringClass().getName(), method.getName());
-        RpcRequest rpcRequest = new RpcRequest(UUID.randomUUID().toString(),
-                method.getDeclaringClass().getName(),
+        log.debug("调用方法：{}#{}", method.getDeclaringClass().getName(), method.getName());
+        RpcRequest rpcRequest = new RpcRequest(
+                UUID.randomUUID().toString(),
+                getServiceName(method.getDeclaringClass()),
                 method.getName(),
                 args,
                 method.getParameterTypes(),
-                false);
+                false
+        );
         RpcResponse<?> rpcResponse;
         try { // 异步获取调用结果
             CompletableFuture<RpcResponse<?>> completableFuture = client.sendRequest(rpcRequest);
             rpcResponse = completableFuture.get();
             Assert.notNull(rpcResponse.getData(), "Unexpect null pointer");
         } catch (InterruptedException | ExecutionException | IllegalStateException e) {
-            logger.error("方法调用请求失败", e);
+            log.error("方法调用请求失败", e);
             return null;
         }
         RpcMessageChecker.check(rpcRequest, rpcResponse);
         return rpcResponse.getData();
+    }
+
+    private String getServiceName(Class<?> clazz) {
+        final Map.Entry<String, Class<?>> classEntry = serviceMap.entrySet().stream()
+                .filter(entry -> clazz.isAssignableFrom(entry.getValue()))
+                .findFirst()
+                .orElse(null);
+        return classEntry == null ? clazz.getName() : classEntry.getKey();
     }
 
 }

@@ -1,10 +1,10 @@
 package dev.jianmu.engine.rpc.util;
 
+import dev.jianmu.engine.rpc.ResponseCode;
 import dev.jianmu.engine.rpc.RpcError;
 import dev.jianmu.engine.rpc.exception.RpcException;
-import dev.jianmu.engine.rpc.request.RpcRequest;
-import dev.jianmu.engine.rpc.response.ResponseCode;
-import dev.jianmu.engine.rpc.response.RpcResponse;
+import dev.jianmu.engine.rpc.translate.RpcRequest;
+import dev.jianmu.engine.rpc.translate.RpcResponse;
 import lombok.extern.slf4j.Slf4j;
 
 /**

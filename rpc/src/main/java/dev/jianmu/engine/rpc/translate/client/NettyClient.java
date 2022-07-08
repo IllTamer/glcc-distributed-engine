@@ -3,11 +3,10 @@ package dev.jianmu.engine.rpc.translate.client;
 import dev.jianmu.engine.rpc.RpcError;
 import dev.jianmu.engine.rpc.exception.RpcException;
 import dev.jianmu.engine.rpc.factory.SingletonFactory;
-import dev.jianmu.engine.rpc.request.RpcRequest;
-import dev.jianmu.engine.rpc.response.RpcResponse;
 import dev.jianmu.engine.rpc.serializer.CommonSerializer;
 import dev.jianmu.engine.rpc.service.ServiceDiscovery;
-import dev.jianmu.engine.rpc.translate.UnprocessedRequests;
+import dev.jianmu.engine.rpc.translate.RpcRequest;
+import dev.jianmu.engine.rpc.translate.RpcResponse;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +35,7 @@ public class NettyClient {
         }
         CompletableFuture<RpcResponse<?>> resultFuture = new CompletableFuture<>();
         try {
-            // 从 Nacos 获取提供对应服务的服务端地址
+            // 获取提供对应服务的服务端地址
             InetSocketAddress address = serviceDiscovery.lookupService(rpcRequest.getInterfaceName());
             Channel channel = ChannelProvider.get(address, serializer);
             if (!channel.isActive())

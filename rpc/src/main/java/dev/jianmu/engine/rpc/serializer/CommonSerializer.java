@@ -14,7 +14,7 @@ public interface CommonSerializer {
 
     int PROTOBUF_SERIALIZER = 3;
 
-    int DEFAULT_SERIALIZER = JSON_SERIALIZER;
+    int DEFAULT_SERIALIZER = HESSIAN_SERIALIZER;
 
     byte[] serialize(Object object);
 

@@ -1,11 +1,12 @@
 package dev.jianmu.engine.api.config;
 
+import dev.jianmu.engine.api.ApiApplication;
 import dev.jianmu.engine.rpc.codec.CommonDecoder;
 import dev.jianmu.engine.rpc.codec.CommonEncoder;
-import dev.jianmu.engine.rpc.provider.ServiceProvider;
 import dev.jianmu.engine.rpc.serializer.CommonSerializer;
 import dev.jianmu.engine.rpc.translate.NettyServerHandler;
 import dev.jianmu.engine.rpc.translate.client.ChannelProvider;
+import dev.jianmu.engine.rpc.translate.server.AbstractServerBootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -16,11 +17,14 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.BeansException;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.scheduling.annotation.Async;
 
 import java.util.concurrent.TimeUnit;
 
@@ -29,23 +33,37 @@ import java.util.concurrent.TimeUnit;
  * */
 @Slf4j
 @Configuration
-public class RpcConfiguration implements ApplicationRunner, ApplicationListener<ContextClosedEvent> {
+public class RpcConfiguration extends AbstractServerBootstrap implements ApplicationRunner, ApplicationListener<ContextClosedEvent> {
 
     private final Boolean loggingInfo;
     private final CommonSerializer serializer;
-    private final ServiceProvider serviceProvider;
 
     private Channel serverChannel;
 
-    public RpcConfiguration(EngineProperties properties) {
-        this.loggingInfo = properties.getDeBug();
+    public RpcConfiguration(EngineProperties properties, ApplicationContext context) {
+        super(
+                properties.getService().getHost(),
+                properties.getService().getRegisterPort(),
+                properties.getService().getServiceRegistry(),
+                properties.getServiceProvider(),
+                ApiApplication.class,
+                properties.getService().getMap(),
+                aClass -> {
+                    try {
+                        return context.getBean(aClass);
+                    } catch (BeansException e) {
+                        return null;
+                    }
+                }
+        );
+        this.loggingInfo = properties.getDebug();
         this.serializer = properties.getSerializer();
-        this.serviceProvider = properties.getServiceProvider();
     }
 
     /**
      * {@link ApplicationRunner}
      * */
+    @Async
     @Override
     public void run(ApplicationArguments args) throws InterruptedException {
         EventLoopGroup bossGroup = new NioEventLoopGroup();
@@ -76,7 +94,7 @@ public class RpcConfiguration implements ApplicationRunner, ApplicationListener<
                                     .addLast(new NettyServerHandler(serviceProvider));
                         }
                     })
-                    .bind(25).sync();
+                    .bind(port).sync();
 
             this.serverChannel = future.channel();
             future.addListener((ChannelFutureListener) listener -> log.info("RPC服务启动"));
