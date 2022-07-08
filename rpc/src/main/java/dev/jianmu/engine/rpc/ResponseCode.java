@@ -1,4 +1,4 @@
-package dev.jianmu.engine.rpc.response;
+package dev.jianmu.engine.rpc;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

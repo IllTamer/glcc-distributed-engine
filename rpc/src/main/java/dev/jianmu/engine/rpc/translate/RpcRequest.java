@@ -1,4 +1,4 @@
-package dev.jianmu.engine.rpc.request;
+package dev.jianmu.engine.rpc.translate;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

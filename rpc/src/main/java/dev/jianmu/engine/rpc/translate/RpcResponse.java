@@ -1,5 +1,6 @@
-package dev.jianmu.engine.rpc.response;
+package dev.jianmu.engine.rpc.translate;
 
+import dev.jianmu.engine.rpc.ResponseCode;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 

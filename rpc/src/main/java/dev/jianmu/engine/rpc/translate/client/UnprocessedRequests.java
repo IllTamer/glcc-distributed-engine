@@ -1,6 +1,6 @@
-package dev.jianmu.engine.rpc.translate;
+package dev.jianmu.engine.rpc.translate.client;
 
-import dev.jianmu.engine.rpc.response.RpcResponse;
+import dev.jianmu.engine.rpc.translate.RpcResponse;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
