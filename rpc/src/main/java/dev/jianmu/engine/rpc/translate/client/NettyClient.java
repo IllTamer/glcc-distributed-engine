@@ -9,6 +9,7 @@ import dev.jianmu.engine.rpc.translate.RpcRequest;
 import dev.jianmu.engine.rpc.translate.RpcResponse;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
@@ -21,6 +22,9 @@ public class NettyClient {
     private final UnprocessedRequests unprocessedRequests = SingletonFactory.getInstance(UnprocessedRequests.class);
     private final ServiceDiscovery serviceDiscovery;
     private final CommonSerializer serializer;
+
+    @Getter
+    private InetSocketAddress lastAddress;
 
     public NettyClient(ServiceDiscovery discovery, CommonSerializer serializer) {
         this.serviceDiscovery = discovery;
@@ -36,7 +40,7 @@ public class NettyClient {
         CompletableFuture<RpcResponse<?>> resultFuture = new CompletableFuture<>();
         try {
             // 获取提供对应服务的服务端地址
-            InetSocketAddress address = serviceDiscovery.lookupService(rpcRequest.getInterfaceName());
+            InetSocketAddress address = (this.lastAddress = serviceDiscovery.lookupService(rpcRequest.getInterfaceName()));
             Channel channel = ChannelProvider.get(address, serializer);
             if (!channel.isActive())
                 throw new IllegalStateException();

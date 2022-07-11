@@ -28,7 +28,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                 log.debug("接收到客户端心跳包");
                 return;
             }
-            log.info("服务端接收到请求：{}", msg);
+            log.debug("服务端接收到请求：{}", msg);
             Object response = requestHandler.handle(msg);
             if (ctx.channel().isActive() && ctx.channel().isWritable()) {
                 // 此处通道未 workerGroup 中的，NettyServer 中创建的是 bossGroup 的

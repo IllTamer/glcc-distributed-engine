@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * @apiNote 也可使用 {@link RpcService} 注册
  * */
 @Slf4j
-public class ConfigureServiceDiscovery implements ServiceDiscovery{
+public class ConfigureServiceDiscovery implements ServiceDiscovery {
 
     private final LoadBalancer loadBalancer;
     private final List<InetSocketAddress> inetAddresses;

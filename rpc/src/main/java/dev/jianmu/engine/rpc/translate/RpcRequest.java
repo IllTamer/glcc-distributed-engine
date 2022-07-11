@@ -11,7 +11,6 @@ import java.io.Serializable;
  *  - 客户端向服务端传输的对象
  * */
 @Data
-//@Builder // 使用创建者模式，一次性给所有变量初始赋值
 @NoArgsConstructor
 @AllArgsConstructor
 public class RpcRequest implements Serializable {

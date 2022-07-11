@@ -5,17 +5,17 @@ import dev.jianmu.engine.rpc.RpcError;
 import dev.jianmu.engine.rpc.exception.RpcException;
 import dev.jianmu.engine.rpc.translate.RpcRequest;
 import dev.jianmu.engine.rpc.translate.RpcResponse;
+import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * 检查响应和请求
  * */
 @Slf4j
+@UtilityClass
 public class RpcMessageChecker {
 
     private static final String INTERFACE_NAME = "interfaceName";
-
-    private RpcMessageChecker() {}
 
     public static void check(RpcRequest rpcRequest, RpcResponse<?> rpcResponse) {
         if(rpcResponse == null) {

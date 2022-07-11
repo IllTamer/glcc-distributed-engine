@@ -1,11 +1,16 @@
 package dev.jianmu.engine.api.config;
 
 import dev.jianmu.engine.api.ApiApplication;
+import dev.jianmu.engine.register.util.NodeUtil;
 import dev.jianmu.engine.rpc.codec.CommonDecoder;
 import dev.jianmu.engine.rpc.codec.CommonEncoder;
 import dev.jianmu.engine.rpc.serializer.CommonSerializer;
+import dev.jianmu.engine.rpc.service.ConfigureServiceDiscovery;
+import dev.jianmu.engine.rpc.service.loadbalancer.LoadBalancer;
 import dev.jianmu.engine.rpc.translate.NettyServerHandler;
+import dev.jianmu.engine.rpc.translate.RpcClientProxy;
 import dev.jianmu.engine.rpc.translate.client.ChannelProvider;
+import dev.jianmu.engine.rpc.translate.client.NettyClient;
 import dev.jianmu.engine.rpc.translate.server.AbstractServerBootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -22,10 +27,12 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.scheduling.annotation.Async;
 
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -33,14 +40,15 @@ import java.util.concurrent.TimeUnit;
  * */
 @Slf4j
 @Configuration
-public class RpcConfiguration extends AbstractServerBootstrap implements ApplicationRunner, ApplicationListener<ContextClosedEvent> {
+public class EngineConfiguration extends AbstractServerBootstrap implements ApplicationRunner, ApplicationListener<ContextClosedEvent> {
 
     private final Boolean loggingInfo;
     private final CommonSerializer serializer;
+    private final Map<String, Integer> discoveries;
 
     private Channel serverChannel;
 
-    public RpcConfiguration(EngineProperties properties, ApplicationContext context) {
+    public EngineConfiguration(EngineProperties properties, ApplicationContext context) {
         super(
                 properties.getService().getHost(),
                 properties.getService().getRegisterPort(),
@@ -58,6 +66,7 @@ public class RpcConfiguration extends AbstractServerBootstrap implements Applica
         );
         this.loggingInfo = properties.getDebug();
         this.serializer = properties.getSerializer();
+        this.discoveries = properties.getService().getDiscoveries();
     }
 
     /**
@@ -98,6 +107,7 @@ public class RpcConfiguration extends AbstractServerBootstrap implements Applica
 
             this.serverChannel = future.channel();
             future.addListener((ChannelFutureListener) listener -> log.info("RPC服务启动"));
+            initEngineComponents();
             serverChannel.closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
@@ -115,6 +125,43 @@ public class RpcConfiguration extends AbstractServerBootstrap implements Applica
             serverChannel.close();
         ChannelProvider.releaseAll();
         log.info("RPC服务停止");
+    }
+
+    @Bean
+    public RpcClientProxy getRpcClientProxy(EngineProperties properties) {
+        final Map<String, Class<?>> serviceMap = properties.getService().getMap();
+        final LoadBalancer loadBalancer = properties.getService().getLoadBalancer();
+        // TODO 前置节点离线检测
+        NettyClient client = new NettyClient(new ConfigureServiceDiscovery(loadBalancer, discoveries), serializer);
+        return new RpcClientProxy(client, serviceMap);
+    }
+
+    /**
+     * 初始化组件
+     * TODO
+     * */
+    private void initEngineComponents() {
+        // register
+        // 默认 “发布任务即leader” 思想
+        // - 配置 jianmu.service.discoveries（可选，empty 即分布式任务->普通任务）
+        // - 配置 jianmu.service.register-port（可选，默认数值即不开启分布式支持）
+        // 测试配置的所有服务发现地址（Server）是否可用
+        Map<String, Integer> recall = NodeUtil.pingAllNodes(discoveries, serializer);
+
+        // 创建Node，维护Node
+        // - 考虑 ServiceDiscovery 结合 Node
+
+        // 集群任务发布：分布式锁
+        // 调用方 -> 创建临时节点（服务发现），生成持久化节点（选举？，分布式锁）
+        // 提供方 ->
+
+        // consumer
+        // LoadBalance 加权最小请求数算法
+        // “批次处理” + priority
+
+        // provider
+
+        // monitor
     }
 
 }

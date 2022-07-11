@@ -2,6 +2,7 @@ package dev.jianmu.engine.rpc.util;
 
 
 import dev.jianmu.engine.rpc.exception.AssertException;
+import lombok.experimental.UtilityClass;
 
 import java.util.Collection;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.Map;
  * @author miemie
  * @since 2018-07-24
  */
+@UtilityClass
 public final class Assert {
 
     /**

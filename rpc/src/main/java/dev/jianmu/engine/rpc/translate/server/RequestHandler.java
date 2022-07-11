@@ -35,7 +35,7 @@ public class RequestHandler {
         try {
             Method method = service.getClass().getMethod(rpcRequest.getMethodName(), rpcRequest.getParamTypes());
             result = method.invoke(service, rpcRequest.getParameters());
-            log.info("服务 {} 成功调用方法 {}", rpcRequest.getInterfaceName(), rpcRequest.getMethodName());
+            log.debug("服务 {} 成功调用方法 {}", rpcRequest.getInterfaceName(), rpcRequest.getMethodName());
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             return RpcResponse.fail(ResponseCode.METHOD_NOT_FOUND, rpcRequest.getRequestId());
         }

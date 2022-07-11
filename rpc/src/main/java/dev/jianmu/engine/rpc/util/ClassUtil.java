@@ -1,5 +1,6 @@
 package dev.jianmu.engine.rpc.util;
 
+import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,9 +14,8 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.stream.Collectors;
 
+@UtilityClass
 public class ClassUtil {
-
-    private ClassUtil() {}
 
     @Nullable
     public static Field getDeepField(String name, Class<?> clazz) {
