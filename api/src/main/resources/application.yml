@@ -10,7 +10,9 @@ jianmu:
       map:
         hello: dev.jianmu.engine.api.service.impl.HelloServiceImpl
       discoveries:
-        'localhost': 8848
+      - host: localhost
+        port: 8848
+        weight: 1
 spring:
   devtools:
     restart:

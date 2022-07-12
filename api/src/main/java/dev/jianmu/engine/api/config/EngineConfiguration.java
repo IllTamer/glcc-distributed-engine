@@ -1,11 +1,12 @@
 package dev.jianmu.engine.api.config;
 
 import dev.jianmu.engine.api.ApiApplication;
-import dev.jianmu.engine.register.util.NodeUtil;
+import dev.jianmu.engine.register.NodeInstancePool;
+import dev.jianmu.engine.register.OnlineNodeServiceDiscovery;
+import dev.jianmu.engine.register.WeightedMinTaskLoadBalancer;
 import dev.jianmu.engine.rpc.codec.CommonDecoder;
 import dev.jianmu.engine.rpc.codec.CommonEncoder;
 import dev.jianmu.engine.rpc.serializer.CommonSerializer;
-import dev.jianmu.engine.rpc.service.ConfigureServiceDiscovery;
 import dev.jianmu.engine.rpc.service.loadbalancer.LoadBalancer;
 import dev.jianmu.engine.rpc.translate.NettyServerHandler;
 import dev.jianmu.engine.rpc.translate.RpcClientProxy;
@@ -44,11 +45,10 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
 
     private final Boolean loggingInfo;
     private final CommonSerializer serializer;
-    private final Map<String, Integer> discoveries;
 
     private Channel serverChannel;
 
-    public EngineConfiguration(EngineProperties properties, ApplicationContext context) {
+    public EngineConfiguration(EngineProperties properties, NodeInstancePool nodeInstancePool, ApplicationContext context) {
         super(
                 properties.getService().getHost(),
                 properties.getService().getRegisterPort(),
@@ -66,7 +66,7 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
         );
         this.loggingInfo = properties.getDebug();
         this.serializer = properties.getSerializer();
-        this.discoveries = properties.getService().getDiscoveries();
+        initEngineComponents(nodeInstancePool, properties);
     }
 
     /**
@@ -104,10 +104,8 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
                         }
                     })
                     .bind(port).sync();
-
             this.serverChannel = future.channel();
-            future.addListener((ChannelFutureListener) listener -> log.info("RPC服务启动"));
-            initEngineComponents();
+            future.addListener((ChannelFutureListener) listener -> log.info("RPC-Server启动"));
             serverChannel.closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
@@ -128,11 +126,15 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
     }
 
     @Bean
-    public RpcClientProxy getRpcClientProxy(EngineProperties properties) {
+    public static NodeInstancePool getNodeInstancePool(EngineProperties properties) {
+        return new NodeInstancePool(properties.getService().getDiscoveries());
+    }
+
+    @Bean
+    public RpcClientProxy getRpcClientProxy(EngineProperties properties, NodeInstancePool nodeInstancePool) {
         final Map<String, Class<?>> serviceMap = properties.getService().getMap();
         final LoadBalancer loadBalancer = properties.getService().getLoadBalancer();
-        // TODO 前置节点离线检测
-        NettyClient client = new NettyClient(new ConfigureServiceDiscovery(loadBalancer, discoveries), serializer);
+        NettyClient client = new NettyClient(new OnlineNodeServiceDiscovery(nodeInstancePool, loadBalancer), serializer);
         return new RpcClientProxy(client, serviceMap);
     }
 
@@ -140,23 +142,21 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
      * 初始化组件
      * TODO
      * */
-    private void initEngineComponents() {
+    private void initEngineComponents(NodeInstancePool nodeInstancePool, EngineProperties properties) {
+        EngineProperties.Service serviceProperties = properties.getService();
+        if (serviceProperties.getLoadBalancer() == null)
+            serviceProperties.setLoadBalancer(new WeightedMinTaskLoadBalancer(nodeInstancePool));
+
         // register
         // 默认 “发布任务即leader” 思想
         // - 配置 jianmu.service.discoveries（可选，empty 即分布式任务->普通任务）
         // - 配置 jianmu.service.register-port（可选，默认数值即不开启分布式支持）
-        // 测试配置的所有服务发现地址（Server）是否可用
-        Map<String, Integer> recall = NodeUtil.pingAllNodes(discoveries, serializer);
-
-        // 创建Node，维护Node
-        // - 考虑 ServiceDiscovery 结合 Node
 
         // 集群任务发布：分布式锁
-        // 调用方 -> 创建临时节点（服务发现），生成持久化节点（选举？，分布式锁）
+        // 调用方 -> 生成持久化节点（分布式锁）
         // 提供方 ->
 
         // consumer
-        // LoadBalance 加权最小请求数算法
         // “批次处理” + priority
 
         // provider

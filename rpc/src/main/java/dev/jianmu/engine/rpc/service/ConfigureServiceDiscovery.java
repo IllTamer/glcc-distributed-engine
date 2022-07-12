@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -21,10 +22,10 @@ public class ConfigureServiceDiscovery implements ServiceDiscovery {
     private final LoadBalancer loadBalancer;
     private final List<InetSocketAddress> inetAddresses;
 
-    public ConfigureServiceDiscovery(LoadBalancer loadBalancer, Map<String, Integer> discoveries) {
+    public ConfigureServiceDiscovery(LoadBalancer loadBalancer, Set<Discovery> discoveries) {
         this.loadBalancer = loadBalancer;
-        this.inetAddresses = discoveries.entrySet().stream()
-                .map(entry -> new InetSocketAddress(entry.getKey(), entry.getValue()))
+        this.inetAddresses = discoveries.stream()
+                .map(discovery -> new InetSocketAddress(discovery.getHost(), discovery.getPort()))
                 .collect(Collectors.toList());
     }
 

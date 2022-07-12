@@ -3,6 +3,7 @@ package dev.jianmu.engine.rpc.translate;
 import dev.jianmu.engine.rpc.translate.client.NettyClient;
 import dev.jianmu.engine.rpc.util.Assert;
 import dev.jianmu.engine.rpc.util.RpcMessageChecker;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationHandler;
@@ -19,7 +20,9 @@ import java.util.concurrent.ExecutionException;
 @Slf4j
 public class RpcClientProxy implements InvocationHandler {
 
+    @Getter
     private final NettyClient client;
+    @Getter
     private final Map<String, Class<?>> serviceMap;
 
     public RpcClientProxy(NettyClient client, Map<String, Class<?>> serviceMap) {

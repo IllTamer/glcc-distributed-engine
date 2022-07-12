@@ -1,15 +1,24 @@
 package dev.jianmu.engine.register;
 
+import lombok.Builder;
 import lombok.Data;
 
+import java.net.InetSocketAddress;
 import java.util.Date;
+import java.util.Map;
 
 /**
  * 任务执行节点
  * @apiNote 本节点接口不提供权限管理功能
  * */
+@Builder
 @Data
 public class ExecutionNode {
+
+    /**
+     * 链接地址
+     * */
+    private final InetSocketAddress address;
 
     /**
      * 事务Id
@@ -37,11 +46,17 @@ public class ExecutionNode {
 
     /**
      * 节点数据
-     * @apiNote 未定
+     * <p>
+     * - count: Integer 任务数量
      * */
-    private Object undecided;
+    private Map<String, Object> nodeInfo;
 
-    enum Type {
+    /**
+     * 节点类型
+     * */
+    private Type type;
+
+    public enum Type {
 
         /**
          * 临时节点
