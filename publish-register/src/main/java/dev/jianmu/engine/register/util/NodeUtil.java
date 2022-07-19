@@ -26,8 +26,10 @@ public class NodeUtil {
     /**
      * ping 节点
      * @return 响应成功返回当前节点 {@link ExecutionNode}，否则返回 null
+     * @deprecated @see RpcClientProxy
      * */
     @Nullable
+    @Deprecated
     public static ExecutionNode pingNode(NettyClient client, ExecutionNode node) {
         RpcRequest pingRequest = new RpcRequest(
                 UUID.randomUUID().toString(),

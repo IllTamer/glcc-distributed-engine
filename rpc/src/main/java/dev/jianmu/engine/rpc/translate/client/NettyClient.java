@@ -20,7 +20,11 @@ import java.util.concurrent.CompletableFuture;
 public class NettyClient {
 
     private final UnprocessedRequests unprocessedRequests = SingletonFactory.getInstance(UnprocessedRequests.class);
+
+    @Getter
     private final ServiceDiscovery serviceDiscovery;
+
+    @Getter
     private final CommonSerializer serializer;
 
     @Getter

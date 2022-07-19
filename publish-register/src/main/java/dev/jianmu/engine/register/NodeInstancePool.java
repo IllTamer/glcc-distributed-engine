@@ -1,10 +1,12 @@
 package dev.jianmu.engine.register;
 
-import dev.jianmu.engine.register.util.NodeUtil;
+import com.google.gson.Gson;
+import dev.jianmu.engine.consumer.LocalStateService;
 import dev.jianmu.engine.rpc.service.Discovery;
 import dev.jianmu.engine.rpc.translate.RpcClientProxy;
-import dev.jianmu.engine.rpc.translate.client.NettyClient;
+import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
 import java.util.*;
@@ -16,10 +18,12 @@ import java.util.stream.Collectors;
  * 节点维护池
  * TODO 持久化+分布式锁
  * */
+@Slf4j
 public class NodeInstancePool {
 
     /**
      * 全局事务Id
+     * TODO 使用时读取全局最大值
      * */
     private final AtomicLong globalTransactionId;
 
@@ -29,10 +33,10 @@ public class NodeInstancePool {
     /**
      * 临时节点列表
      * */
+    @Getter
     private final List<ExecutionNode> tempExecutionNodes;
 
     public NodeInstancePool(Set<Discovery> discoveries) {
-        // TODO 使用时读取全局最大值
         this.globalTransactionId = new AtomicLong(0);
         this.tempExecutionNodes = discoveries.stream()
                 .map(discovery -> {
@@ -53,19 +57,32 @@ public class NodeInstancePool {
     }
 
     /**
-     * ping 并返回所有可用节点
+     * refresh 并返回所有可用节点
      * */
     public List<ExecutionNode> broadcast() {
-        final NettyClient client = rpcClientProxy.getClient();
         synchronized (tempExecutionNodes) {
             CopyOnWriteArrayList<ExecutionNode> callback = tempExecutionNodes.stream()
-                    .map(node -> NodeUtil.pingNode(client, node))
+                    .map(node -> refreshNode(node, rpcClientProxy))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toCollection(CopyOnWriteArrayList::new));
             tempExecutionNodes.clear();
             tempExecutionNodes.addAll(callback);
         }
         return tempExecutionNodes;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ExecutionNode refreshNode(ExecutionNode node, RpcClientProxy rpcClientProxy) {
+        try {
+            RpcClientProxy copyProxy = rpcClientProxy.copy(name -> node.getAddress());
+            LocalStateService service = copyProxy.getProxy(LocalStateService.class);
+            Map<String, Object> nodeInfo = new Gson().fromJson(service.info(), Map.class);
+            node.setNodeInfo(nodeInfo);
+            return node;
+        } catch (Exception e) {
+            log.error("", e);
+            return null;
+        }
     }
 
 }
