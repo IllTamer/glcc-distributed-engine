@@ -10,6 +10,7 @@ public interface LoadBalancer {
 
     /**
      * 从一系列 InetAddress 中选择一个
+     * @param instances 可用链接地址列表
      * */
     InetSocketAddress select(List<InetSocketAddress> instances);
 

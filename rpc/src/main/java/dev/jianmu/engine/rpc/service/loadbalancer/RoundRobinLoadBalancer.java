@@ -8,12 +8,13 @@ import java.util.List;
  * */
 public class RoundRobinLoadBalancer implements LoadBalancer {
 
-    private int index = 0;
+    private final ThreadLocal<Integer> index = new ThreadLocal<>();
 
     @Override
     public InetSocketAddress select(List<InetSocketAddress> instances) {
-        if (index >= instances.size()) index %= instances.size();
-        return instances.get(index);
+        Integer integer = index.get();
+        if (integer >= instances.size()) integer %= instances.size();
+        return instances.get(integer);
     }
 
 }

@@ -1,5 +1,6 @@
 package dev.jianmu.engine.rpc.translate;
 
+import dev.jianmu.engine.rpc.service.ServiceDiscovery;
 import dev.jianmu.engine.rpc.translate.client.NettyClient;
 import dev.jianmu.engine.rpc.util.Assert;
 import dev.jianmu.engine.rpc.util.RpcMessageChecker;
@@ -67,6 +68,10 @@ public class RpcClientProxy implements InvocationHandler {
         }
         RpcMessageChecker.check(rpcRequest, rpcResponse);
         return rpcResponse.getData();
+    }
+
+    public RpcClientProxy copy(ServiceDiscovery discovery) {
+        return new RpcClientProxy(new NettyClient(discovery, client.getSerializer()), serviceMap);
     }
 
     private String getServiceName(Class<?> clazz) {

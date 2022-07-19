@@ -78,7 +78,7 @@ public class ChannelProvider {
                 log.debug("客户端连接成功！");
                 completableFuture.complete(future.channel());
             } else {
-                throw new IllegalStateException();
+                throw new IllegalStateException(address.toString());
             }
         });
         return completableFuture.get();

@@ -21,7 +21,7 @@
     <dependencies>
         <dependency>
             <groupId>dev.jianmu.engine</groupId>
-            <artifactId>rpc</artifactId>
+            <artifactId>provider-provider</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

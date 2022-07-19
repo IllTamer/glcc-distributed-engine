@@ -1,6 +1,5 @@
 package dev.jianmu.engine.api.config;
 
-import dev.jianmu.engine.register.WeightedMinTaskLoadBalancer;
 import dev.jianmu.engine.rpc.annotation.RpcService;
 import dev.jianmu.engine.rpc.provider.DefaultServiceProvider;
 import dev.jianmu.engine.rpc.provider.ServiceProvider;
@@ -9,13 +8,13 @@ import dev.jianmu.engine.rpc.service.ConfigureServiceRegistry;
 import dev.jianmu.engine.rpc.service.Discovery;
 import dev.jianmu.engine.rpc.service.ServiceRegistry;
 import dev.jianmu.engine.rpc.service.loadbalancer.LoadBalancer;
-import dev.jianmu.engine.rpc.service.loadbalancer.RoundRobinLoadBalancer;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -61,7 +60,7 @@ public class EngineProperties {
          * value: port
          * */
         @NotNull
-        private Set<Discovery> discoveries;
+        private Set<Discovery> discoveries = new HashSet<>();
 
         /**
          * RPC 代理类注册

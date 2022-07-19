@@ -6,13 +6,13 @@ jianmu:
   engine:
     debug: true
     service:
-      register-port: 6666 # 8848
+      register-port: 2333
       map:
-        hello: dev.jianmu.engine.api.service.impl.HelloServiceImpl
+        'dev.jianmu.engine.consumer.LocalStateService': dev.jianmu.engine.consumer.LocalStateServiceImpl
       discoveries:
       - host: localhost
         port: 8848
-        weight: 1
+
 spring:
   devtools:
     restart:

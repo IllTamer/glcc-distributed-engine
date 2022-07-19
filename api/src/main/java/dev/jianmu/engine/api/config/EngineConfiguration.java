@@ -3,7 +3,8 @@ package dev.jianmu.engine.api.config;
 import dev.jianmu.engine.api.ApiApplication;
 import dev.jianmu.engine.register.NodeInstancePool;
 import dev.jianmu.engine.register.OnlineNodeServiceDiscovery;
-import dev.jianmu.engine.register.WeightedMinTaskLoadBalancer;
+import dev.jianmu.engine.api.config.application.RegisterApplication;
+import dev.jianmu.engine.register.WeightedMinLoadLoadBalancer;
 import dev.jianmu.engine.rpc.codec.CommonDecoder;
 import dev.jianmu.engine.rpc.codec.CommonEncoder;
 import dev.jianmu.engine.rpc.serializer.CommonSerializer;
@@ -43,12 +44,12 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class EngineConfiguration extends AbstractServerBootstrap implements ApplicationRunner, ApplicationListener<ContextClosedEvent> {
 
-    private final Boolean loggingInfo;
-    private final CommonSerializer serializer;
+    private final EngineProperties properties;
+    private final ApplicationContext context;
 
     private Channel serverChannel;
 
-    public EngineConfiguration(EngineProperties properties, NodeInstancePool nodeInstancePool, ApplicationContext context) {
+    public EngineConfiguration(EngineProperties properties, ApplicationContext context) {
         super(
                 properties.getService().getHost(),
                 properties.getService().getRegisterPort(),
@@ -64,9 +65,8 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
                     }
                 }
         );
-        this.loggingInfo = properties.getDebug();
-        this.serializer = properties.getSerializer();
-        initEngineComponents(nodeInstancePool, properties);
+        this.properties = properties;
+        this.context = context;
     }
 
     /**
@@ -80,7 +80,7 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
 
         try {
             ServerBootstrap server = new ServerBootstrap();
-            if (loggingInfo)
+            if (properties.getDebug())
                 server.handler(new LoggingHandler(LogLevel.INFO));
 
             ChannelFuture future = server
@@ -98,14 +98,16 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
                             ch.pipeline()
                                     // 应用层心跳机制
                                     .addLast(new IdleStateHandler(30, 0, 0, TimeUnit.SECONDS))
-                                    .addLast(new CommonEncoder(serializer))
+                                    .addLast(new CommonEncoder(properties.getSerializer()))
                                     .addLast(new CommonDecoder())
                                     .addLast(new NettyServerHandler(serviceProvider));
                         }
                     })
                     .bind(port).sync();
             this.serverChannel = future.channel();
-            future.addListener((ChannelFutureListener) listener -> log.info("RPC-Server启动"));
+            future.addListener((ChannelFutureListener) listener -> log.info("RPC-Server启动，在(port): {}", port));
+            // After server init
+            initEngineComponents(properties, context);
             serverChannel.closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
@@ -126,15 +128,17 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
     }
 
     @Bean
-    public static NodeInstancePool getNodeInstancePool(EngineProperties properties) {
-        return new NodeInstancePool(properties.getService().getDiscoveries());
+    public static RegisterApplication getRegisterApplication(EngineProperties properties) {
+        NodeInstancePool pool = new NodeInstancePool(properties.getService().getDiscoveries());
+        return new RegisterApplication(pool);
     }
 
     @Bean
-    public RpcClientProxy getRpcClientProxy(EngineProperties properties, NodeInstancePool nodeInstancePool) {
+    public static RpcClientProxy getRpcClientProxy(EngineProperties properties, RegisterApplication registerApplication) {
         final Map<String, Class<?>> serviceMap = properties.getService().getMap();
         final LoadBalancer loadBalancer = properties.getService().getLoadBalancer();
-        NettyClient client = new NettyClient(new OnlineNodeServiceDiscovery(nodeInstancePool, loadBalancer), serializer);
+        final CommonSerializer serializer = properties.getSerializer();
+        NettyClient client = new NettyClient(new OnlineNodeServiceDiscovery(registerApplication.getNodeInstancePool(), loadBalancer), serializer);
         return new RpcClientProxy(client, serviceMap);
     }
 
@@ -142,26 +146,25 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
      * 初始化组件
      * TODO
      * */
-    private void initEngineComponents(NodeInstancePool nodeInstancePool, EngineProperties properties) {
+    private void initEngineComponents(EngineProperties properties, ApplicationContext context) {
+        final RegisterApplication registerApplication = context.getBean(RegisterApplication.class);
+        final RpcClientProxy rpcClientProxy = context.getBean(RpcClientProxy.class);
+        final NodeInstancePool nodeInstancePool = registerApplication.getNodeInstancePool();
+        nodeInstancePool.setRpcClientProxy(rpcClientProxy);
+
         EngineProperties.Service serviceProperties = properties.getService();
         if (serviceProperties.getLoadBalancer() == null)
-            serviceProperties.setLoadBalancer(new WeightedMinTaskLoadBalancer(nodeInstancePool));
+            serviceProperties.setLoadBalancer(new WeightedMinLoadLoadBalancer(nodeInstancePool));
 
         // register
         // 默认 “发布任务即leader” 思想
         // - 配置 jianmu.service.discoveries（可选，empty 即分布式任务->普通任务）
         // - 配置 jianmu.service.register-port（可选，默认数值即不开启分布式支持）
-
-        // 集群任务发布：分布式锁
-        // 调用方 -> 生成持久化节点（分布式锁）
-        // 提供方 ->
+        // 生成持久化节点（分布式锁）
 
         // consumer
         // “批次处理” + priority
-
-        // provider
-
-        // monitor
+        registerApplication.refreshNodes();
     }
 
 }
