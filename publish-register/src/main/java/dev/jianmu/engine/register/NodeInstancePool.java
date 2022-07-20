@@ -2,8 +2,10 @@ package dev.jianmu.engine.register;
 
 import com.google.gson.Gson;
 import dev.jianmu.engine.consumer.LocalStateService;
+import dev.jianmu.engine.consumer.LocalStateServiceImpl;
 import dev.jianmu.engine.rpc.service.Discovery;
 import dev.jianmu.engine.rpc.translate.RpcClientProxy;
+import dev.jianmu.engine.rpc.util.Assert;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -16,14 +18,15 @@ import java.util.stream.Collectors;
 
 /**
  * 节点维护池
- * TODO 持久化+分布式锁
+ * TODO 分布式锁
  * */
 @Slf4j
+@Getter
+@SuppressWarnings("unchecked")
 public class NodeInstancePool {
 
     /**
      * 全局事务Id
-     * TODO 使用时读取全局最大值
      * */
     private final AtomicLong globalTransactionId;
 
@@ -33,27 +36,40 @@ public class NodeInstancePool {
     /**
      * 临时节点列表
      * */
-    @Getter
     private final List<ExecutionNode> tempExecutionNodes;
 
-    public NodeInstancePool(Set<Discovery> discoveries) {
+    /**
+     * 本机持久化节点
+     * */
+    private final ExecutionNode localPersistentNode;
+
+    public NodeInstancePool(Set<Discovery> discoveries, Integer port) {
         this.globalTransactionId = new AtomicLong(0);
         this.tempExecutionNodes = discoveries.stream()
                 .map(discovery -> {
                     final Date createTime = new Date();
-                    // configure from database
                     return ExecutionNode.builder()
                             .address(new InetSocketAddress(discovery.getHost(), discovery.getPort()))
                             .transactionId(globalTransactionId.getAndIncrement())
                             .createTime(createTime)
                             .modifyTime(createTime)
                             .type(ExecutionNode.Type.EPHEMERAL)
-                            // TODO database support
                             .dataVersion(0L)
-                            .nodeInfo(new HashMap<>())
+                            .nodeInfo(Collections.EMPTY_MAP)
                             .build();
                 })
                 .collect(Collectors.toCollection(CopyOnWriteArrayList::new));
+        final Date createTime = new Date();
+        this.localPersistentNode = ExecutionNode.builder()
+                .address(new InetSocketAddress("localhost", port))
+                .transactionId(globalTransactionId.getAndIncrement())
+                .createTime(createTime)
+                .modifyTime(createTime)
+                .type(ExecutionNode.Type.PERSISTENT)
+                .dataVersion(0L)
+                .nodeInfo(Collections.EMPTY_MAP)
+                .build();
+        refreshLocalNode();
     }
 
     /**
@@ -71,13 +87,21 @@ public class NodeInstancePool {
         return tempExecutionNodes;
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * 更新本地节点数据
+     * */
+    public void refreshLocalNode() {
+        this.localPersistentNode.setNodeInfo(new Gson().fromJson(new LocalStateServiceImpl().info(), Map.class));
+    }
+
     private static ExecutionNode refreshNode(ExecutionNode node, RpcClientProxy rpcClientProxy) {
         try {
             RpcClientProxy copyProxy = rpcClientProxy.copy(name -> node.getAddress());
             LocalStateService service = copyProxy.getProxy(LocalStateService.class);
             Map<String, Object> nodeInfo = new Gson().fromJson(service.info(), Map.class);
             node.setNodeInfo(nodeInfo);
+            node.setModifyTime(new Date());
+            node.setDataVersion(node.getDataVersion()+1);
             return node;
         } catch (Exception e) {
             log.error("", e);
