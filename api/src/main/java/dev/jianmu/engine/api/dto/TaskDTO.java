@@ -1,5 +1,6 @@
 package dev.jianmu.engine.api.dto;
 
+import dev.jianmu.engine.register.ExecutionNode;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,11 +14,11 @@ import java.util.List;
 public class TaskDTO {
 
     /**
-     * 分布式全局 Id {@link dev.jianmu.engine.register.ExecutionNode#transactionId}
+     * 分布式全局任务 Id {@link ExecutionNode#getTransactionId()}
      * <p>
      * 用于确保接口幂等，防止重复发布。
      * */
-    private String transactionId;
+    private Long transactionId;
 
     // 优先级
     private Integer priority;

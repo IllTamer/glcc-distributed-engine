@@ -129,7 +129,7 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
 
     @Bean
     public static RegisterApplication getRegisterApplication(EngineProperties properties) {
-        NodeInstancePool pool = new NodeInstancePool(properties.getService().getDiscoveries());
+        NodeInstancePool pool = new NodeInstancePool(properties.getService().getDiscoveries(), properties.getService().getRegisterPort());
         return new RegisterApplication(pool);
     }
 
@@ -155,13 +155,10 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
         EngineProperties.Service serviceProperties = properties.getService();
         if (serviceProperties.getLoadBalancer() == null)
             serviceProperties.setLoadBalancer(new WeightedMinLoadLoadBalancer(nodeInstancePool));
-
         // register
         // 默认 “发布任务即leader” 思想
         // - 配置 jianmu.service.discoveries（可选，empty 即分布式任务->普通任务）
         // - 配置 jianmu.service.register-port（可选，默认数值即不开启分布式支持）
-        // 生成持久化节点（分布式锁）
-
         // consumer
         // “批次处理” + priority
         registerApplication.refreshNodes();

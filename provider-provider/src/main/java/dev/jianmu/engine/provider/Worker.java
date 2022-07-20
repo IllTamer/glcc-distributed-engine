@@ -2,7 +2,10 @@ package dev.jianmu.engine.provider;
 
 import lombok.Getter;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 /**
  * Task-Worker 实体类
@@ -10,6 +13,10 @@ import java.time.LocalDateTime;
  * */
 @Getter
 public abstract class Worker {
+
+    protected static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase(Locale.ROOT).startsWith("windows");
+
+    protected static final Charset DEFAULT_CHARSET = IS_WINDOWS ? Charset.forName("GB2312") : StandardCharsets.UTF_8;
 
     private final String id;
 
@@ -28,7 +35,9 @@ public abstract class Worker {
     abstract public void runTask(Task task);
 
     public enum Type {
+
         SHELL
+
     }
 
 }

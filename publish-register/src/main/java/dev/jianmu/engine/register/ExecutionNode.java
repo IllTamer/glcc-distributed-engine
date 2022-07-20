@@ -24,30 +24,31 @@ public class ExecutionNode {
      * 事务Id
      * <p>
      * 分布式全局唯一，确定操作的先后顺序
+     * @apiNote 仅用于临时节点
      * */
     private Long transactionId;
 
     /**
-     * 数据版本号
+     * 节点数据版本号
      * <p>
      * 每次数据变化而自增
      * */
     private Long dataVersion;
 
     /**
-     * 创建时间
+     * 节点创建时间
      * */
     private Date createTime;
 
     /**
-     * 最后修改时间
+     * 最后修改节点数据时间
      * */
     private Date modifyTime;
 
     /**
      * 节点数据
      * <p>
-     * - count: Integer 任务数量
+     * @see dev.jianmu.engine.consumer.LocalStateService
      * */
     private Map<String, Object> nodeInfo;
 

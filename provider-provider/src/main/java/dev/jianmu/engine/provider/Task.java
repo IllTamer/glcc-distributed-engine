@@ -16,23 +16,29 @@ public class Task {
 
     private final String uuid;
 
+    /**
+     * 分布式全局任务 Id
+     * <p>
+     * 用于确保接口幂等，防止重复发布。
+     * */
+    private final Long transactionId;
+
     // 优先级
     private final Integer priority;
 
     // workerId
+    // consumer 执行时赋值
     private final String workerId;
 
     // 命令列表
     private final List<String> script;
-
-    // 执行顺序号
-    private final Long serialNo;
 
     // 任务运行状态
     @Setter
     private TaskStatus status;
 
     // 结束时间
+    // consumer 执行完赋值
     @Setter
     private LocalDateTime endTime;
 

@@ -25,7 +25,7 @@ public class OnlineNodeServiceDiscovery implements ServiceDiscovery {
     @Override
     public InetSocketAddress lookupService(String name) {
         // 节点离线检测
-        List<InetSocketAddress> addresses = nodeInstancePool.broadcast().stream()
+        List<InetSocketAddress> addresses = nodeInstancePool.getTempExecutionNodes().stream()
                 .map(ExecutionNode::getAddress)
                 .collect(Collectors.toList());
         if (addresses.size() == 0)
