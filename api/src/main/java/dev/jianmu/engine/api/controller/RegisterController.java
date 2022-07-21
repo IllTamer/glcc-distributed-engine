@@ -1,10 +1,14 @@
 package dev.jianmu.engine.api.controller;
 
 import dev.jianmu.engine.api.dto.TaskDTO;
+import dev.jianmu.engine.api.pojo.EngineLock;
+import dev.jianmu.engine.api.service.PessimisticLockService;
 import dev.jianmu.engine.provider.Task;
 import dev.jianmu.engine.register.ExecutionNode;
 import dev.jianmu.engine.api.config.application.RegisterApplication;
+import dev.jianmu.engine.rpc.util.Assert;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -13,28 +17,38 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/task/register")
 public class RegisterController {
 
-    private final RegisterApplication registerApplication;
+    private static final String SUBMIT_BUSINESS_CODE = "submit";
 
-    public RegisterController(RegisterApplication registerApplication) {
+    private final RegisterApplication registerApplication;
+    private final PessimisticLockService pessimisticLockService;
+
+    public RegisterController(
+            RegisterApplication registerApplication,
+            PessimisticLockService pessimisticLockService
+    ) {
         this.registerApplication = registerApplication;
+        this.pessimisticLockService = pessimisticLockService;
     }
 
     /**
      * 提交任务
-     * TODO
      * @return 注册节点的信息
      * */
     @RequestMapping("/submit")
-    public ExecutionNode submitTask(TaskDTO taskDTO) {
+    public @Nullable ExecutionNode submitTask(TaskDTO taskDTO) {
         // 创建Task
         Task task = registerApplication.createTask(taskDTO);
         // 更新Node状态(CPU使用率，内存使用率等)
         registerApplication.refreshNodes();
         ExecutionNode publish = null;
-        // 分布式锁，入锁(拒绝新增) // 分布式建立时需要进行状态转变（申请->等待->确认，防止出现其它进程同时抢占的情况）
         try {
-            // 发布
+            // 分布式锁，入锁(拒绝新增)
+            final EngineLock lock = pessimisticLockService.tryLock(SUBMIT_BUSINESS_CODE);
             publish = registerApplication.publish(task);
+            final boolean unlock = pessimisticLockService.unlock(lock);
+            Assert.isTrue(unlock, "Unlock failed: Lock(%s)", lock);
+        } catch (InterruptedException e) {
+            log.warn("Failed to request lock: {}", SUBMIT_BUSINESS_CODE);
         } catch (Exception e) {
             log.warn("Something happened when publish Task({})", task, e);
         }
