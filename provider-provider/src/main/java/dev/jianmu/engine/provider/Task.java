@@ -3,6 +3,7 @@ package dev.jianmu.engine.provider;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.jetbrains.annotations.NotNull;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,7 +13,7 @@ import java.util.List;
  * */
 @Builder
 @Getter
-public class Task {
+public class Task implements Comparable<Integer> {
 
     private final String uuid;
 
@@ -23,7 +24,11 @@ public class Task {
      * */
     private final Long transactionId;
 
-    // 优先级
+    /**
+     * 优先级
+     * <p>
+     * 数值越小优先级越高
+     * */
     private final Integer priority;
 
     // workerId
@@ -44,5 +49,10 @@ public class Task {
 
     // 开始时间
     private final LocalDateTime startTime = LocalDateTime.now();
+
+    @Override
+    public int compareTo(@NotNull Integer o) {
+        return o.compareTo(priority);
+    }
 
 }

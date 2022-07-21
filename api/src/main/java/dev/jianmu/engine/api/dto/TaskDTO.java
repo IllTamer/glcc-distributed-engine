@@ -20,7 +20,11 @@ public class TaskDTO {
      * */
     private Long transactionId;
 
-    // 优先级
+    /**
+     * 优先级
+     * <p>
+     * 数值越小优先级越高
+     * */
     private Integer priority;
 
     // 计划任务表达式

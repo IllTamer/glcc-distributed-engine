@@ -51,6 +51,7 @@ public class RegisterApplication {
 
     public ExecutionNode publish(Task task) {
         // TODO
+        // 本机任务发布 + 分布式任务调度
         return null;
     }
 
