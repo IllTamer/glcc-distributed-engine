@@ -14,6 +14,11 @@ jianmu:
         port: 8848
 
 spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/jianmu
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: root
   devtools:
     restart:
       enabled: false

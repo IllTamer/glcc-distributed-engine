@@ -22,6 +22,7 @@
         <maven.compiler.target>11</maven.compiler.target>
         <annotations.version>23.0.0</annotations.version>
         <netty.version>4.1.50.Final</netty.version>
+        <mybatis.plus.version>3.4.0</mybatis.plus.version>
     </properties>
 
     <dependencies>
