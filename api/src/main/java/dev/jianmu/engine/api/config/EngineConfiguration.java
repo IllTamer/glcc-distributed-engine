@@ -1,12 +1,15 @@
 package dev.jianmu.engine.api.config;
 
 import dev.jianmu.engine.api.ApiApplication;
+import dev.jianmu.engine.api.config.application.RegisterApplication;
+import dev.jianmu.engine.api.service.ConsumerService;
+import dev.jianmu.engine.api.service.impl.ConsumerServiceImpl;
 import dev.jianmu.engine.register.NodeInstancePool;
 import dev.jianmu.engine.register.OnlineNodeServiceDiscovery;
-import dev.jianmu.engine.api.config.application.RegisterApplication;
 import dev.jianmu.engine.register.WeightedMinLoadLoadBalancer;
 import dev.jianmu.engine.rpc.codec.CommonDecoder;
 import dev.jianmu.engine.rpc.codec.CommonEncoder;
+import dev.jianmu.engine.rpc.factory.SingletonFactory;
 import dev.jianmu.engine.rpc.serializer.CommonSerializer;
 import dev.jianmu.engine.rpc.service.loadbalancer.LoadBalancer;
 import dev.jianmu.engine.rpc.translate.NettyServerHandler;
@@ -128,12 +131,6 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
     }
 
     @Bean
-    public static RegisterApplication getRegisterApplication(EngineProperties properties) {
-        NodeInstancePool pool = new NodeInstancePool(properties.getService().getDiscoveries(), properties.getService().getRegisterPort());
-        return new RegisterApplication(pool);
-    }
-
-    @Bean
     public static RpcClientProxy getRpcClientProxy(EngineProperties properties, RegisterApplication registerApplication) {
         final Map<String, Class<?>> serviceMap = properties.getService().getMap();
         final LoadBalancer loadBalancer = properties.getService().getLoadBalancer();
@@ -144,7 +141,6 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
 
     /**
      * 初始化组件
-     * TODO
      * */
     private void initEngineComponents(EngineProperties properties, ApplicationContext context) {
         final RegisterApplication registerApplication = context.getBean(RegisterApplication.class);
@@ -155,12 +151,8 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
         EngineProperties.Service serviceProperties = properties.getService();
         if (serviceProperties.getLoadBalancer() == null)
             serviceProperties.setLoadBalancer(new WeightedMinLoadLoadBalancer(nodeInstancePool));
-        // register
-        // 默认 “发布任务即leader” 思想
-        // - 配置 jianmu.service.discoveries（可选，empty 即分布式任务->普通任务）
-        // - 配置 jianmu.service.register-port（可选，默认数值即不开启分布式支持）
-        // consumer
-        // “批次处理” + priority
+
+        SingletonFactory.setInstance(ConsumerService.class, new ConsumerServiceImpl());
         registerApplication.refreshNodes();
     }
 

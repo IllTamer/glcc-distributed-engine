@@ -27,7 +27,10 @@ public enum TaskStatus {
 
     /**
      * 分配失败
+     * @deprecated 本业务预期任务分配异常的情况仅 transactionId 重复一种，此为 register 模块
+     *  逻辑，不应也不存在与 consumer 模块中，故最终回调并记录的任务中不存在此种状态。
      * */
+    @Deprecated
     DISPATCH_FAILED
 
 }

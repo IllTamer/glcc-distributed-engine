@@ -4,6 +4,7 @@ import dev.jianmu.engine.rpc.RpcError;
 import dev.jianmu.engine.rpc.exception.RpcException;
 import dev.jianmu.engine.rpc.service.ServiceDiscovery;
 import dev.jianmu.engine.rpc.service.loadbalancer.LoadBalancer;
+import lombok.Getter;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 public class OnlineNodeServiceDiscovery implements ServiceDiscovery {
 
     private final NodeInstancePool nodeInstancePool;
+    @Getter
     private final LoadBalancer loadBalancer;
 
     public OnlineNodeServiceDiscovery(NodeInstancePool nodeInstancePool, LoadBalancer loadBalancer) {

@@ -5,7 +5,6 @@ import dev.jianmu.engine.consumer.LocalStateService;
 import dev.jianmu.engine.consumer.LocalStateServiceImpl;
 import dev.jianmu.engine.rpc.service.Discovery;
 import dev.jianmu.engine.rpc.translate.RpcClientProxy;
-import dev.jianmu.engine.rpc.util.Assert;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +17,6 @@ import java.util.stream.Collectors;
 
 /**
  * 节点维护池
- * TODO 分布式锁
  * */
 @Slf4j
 @Getter

@@ -5,6 +5,8 @@ import lombok.Getter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -14,10 +16,13 @@ import java.util.Locale;
 @Getter
 public abstract class Worker {
 
+    public static final HashMap<Type, Worker> WORKER_MAP = new HashMap<>();
+
     protected static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase(Locale.ROOT).startsWith("windows");
 
     protected static final Charset DEFAULT_CHARSET = IS_WINDOWS ? Charset.forName("GB2312") : StandardCharsets.UTF_8;
 
+    @Getter
     private final String id;
 
     private final String name;
@@ -34,10 +39,22 @@ public abstract class Worker {
 
     abstract public void runTask(Task task);
 
+    abstract public String parseScript(List<String> scripts);
+
     public enum Type {
 
         SHELL
 
+    }
+
+    @Override
+    public String toString() {
+        return "Worker(" +
+                "id=" + id +
+                ", name=" + name +
+                ", type=" + type +
+                ", createdTime=" + createdTime +
+                ')';
     }
 
 }

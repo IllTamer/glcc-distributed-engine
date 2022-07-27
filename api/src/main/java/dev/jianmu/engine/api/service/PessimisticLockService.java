@@ -47,8 +47,7 @@ public class PessimisticLockService extends ServiceImpl<EngineLockMapper, Engine
         if (locked != null)
             return null;
         EngineLock lock = new EngineLock(null, businessCode, new Date());
-        final int id = super.baseMapper.insert(lock);
-        lock.setId(id);
+        super.baseMapper.insert(lock);
         return lock;
     }
 
@@ -57,11 +56,10 @@ public class PessimisticLockService extends ServiceImpl<EngineLockMapper, Engine
      * */
     @Transactional
     public boolean unlock(@NotNull EngineLock lock) {
-        final int delete = super.baseMapper.delete(
+        final int delete = getBaseMapper().delete(
                 new LambdaQueryWrapper<EngineLock>()
                         .eq(EngineLock::getId, lock.getId())
                         .eq(EngineLock::getBusinessCode, lock.getBusinessCode())
-                        .eq(EngineLock::getUpdateTime, lock.getUpdateTime())
         );
         return delete != -1;
     }

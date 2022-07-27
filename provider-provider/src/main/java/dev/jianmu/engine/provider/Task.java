@@ -1,8 +1,13 @@
 package dev.jianmu.engine.provider;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.LocalDateTime;
@@ -13,42 +18,74 @@ import java.util.List;
  * */
 @Builder
 @Getter
+@Setter
+@ToString
+@TableName("jianmu_engine_task")
 public class Task implements Comparable<Integer> {
 
-    private final String uuid;
+    @TableId(type = IdType.AUTO)
+    private Integer id;
+
+    private String uuid;
 
     /**
      * 分布式全局任务 Id
      * <p>
      * 用于确保接口幂等，防止重复发布。
      * */
-    private final Long transactionId;
+    @TableField("transaction_id")
+    private Long transactionId;
+
+    /**
+     * 任务类型
+     * <p>
+     * - local: 本地执行
+     * - dispatch: 分布式调度(如果本机权重较高，也会分配给本机)
+     * - iterate: 所有节点均执行
+     * */
+    private String type;
 
     /**
      * 优先级
      * <p>
      * 数值越小优先级越高
      * */
-    private final Integer priority;
+    private Integer priority;
 
-    // workerId
-    // consumer 执行时赋值
-    private final String workerId;
+    // 计划任务表达式
+    private String cron;
 
-    // 命令列表
-    private final List<String> script;
+    /**
+     * worker 的 Id
+     * <p>
+     * jianmu 进程唯一
+     * */
+    @TableField("worker_id")
+    private String workerId;
 
-    // 任务运行状态
+    /**
+     * 执行的指令列表
+     * */
+    private String script;
+
+    /**
+     * 任务运行状态
+     * */
     @Setter
     private TaskStatus status;
 
-    // 结束时间
-    // consumer 执行完赋值
-    @Setter
-    private LocalDateTime endTime;
+    /**
+     * 开始时间
+     * */
+    @TableField("start_time")
+    private LocalDateTime startTime;
 
-    // 开始时间
-    private final LocalDateTime startTime = LocalDateTime.now();
+    /**
+     * 结束时间
+     * */
+    @Setter
+    @TableField("end_time")
+    private LocalDateTime endTime;
 
     @Override
     public int compareTo(@NotNull Integer o) {
