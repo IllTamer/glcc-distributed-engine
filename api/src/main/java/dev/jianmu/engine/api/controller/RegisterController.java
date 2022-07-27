@@ -1,16 +1,18 @@
 package dev.jianmu.engine.api.controller;
 
+import dev.jianmu.engine.api.config.application.RegisterApplication;
 import dev.jianmu.engine.api.dto.TaskDTO;
 import dev.jianmu.engine.api.pojo.EngineLock;
 import dev.jianmu.engine.api.service.PessimisticLockService;
 import dev.jianmu.engine.provider.Task;
-import dev.jianmu.engine.register.ExecutionNode;
-import dev.jianmu.engine.api.config.application.RegisterApplication;
 import dev.jianmu.engine.rpc.util.Assert;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -33,27 +35,34 @@ public class RegisterController {
     /**
      * 提交任务
      * @return 注册节点的信息
+     *  Key: hostName,
+     *  Value: workerId
      * */
     @RequestMapping("/submit")
-    public @Nullable ExecutionNode submitTask(TaskDTO taskDTO) {
+    public @Nullable Map<String, String> submitTask(@RequestBody TaskDTO taskDTO) {
         // 创建Task
         Task task = registerApplication.createTask(taskDTO);
         // 更新Node状态(CPU使用率，内存使用率等)
         registerApplication.refreshNodes();
-        ExecutionNode publish = null;
+        Map<String, String> workerIdMap = null;
+        EngineLock lock = null;
         try {
             // 分布式锁，入锁(拒绝新增)
-            final EngineLock lock = pessimisticLockService.tryLock(SUBMIT_BUSINESS_CODE);
-            publish = registerApplication.publish(task);
+            lock = pessimisticLockService.tryLock(SUBMIT_BUSINESS_CODE);
+            workerIdMap = registerApplication.publish(task);
             final boolean unlock = pessimisticLockService.unlock(lock);
             Assert.isTrue(unlock, "Unlock failed: Lock(%s)", lock);
+            lock = null;
         } catch (InterruptedException e) {
             log.warn("Failed to request lock: {}", SUBMIT_BUSINESS_CODE);
         } catch (Exception e) {
             log.warn("Something happened when publish Task({})", task, e);
+        } finally {
+            if (lock != null)
+                pessimisticLockService.unlock(lock);
         }
         // 分布式锁，出锁(允许新增)
-        return publish;
+        return workerIdMap;
     }
 
     /**

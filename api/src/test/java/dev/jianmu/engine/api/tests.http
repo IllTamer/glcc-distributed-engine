@@ -1,0 +1,13 @@
+// 获取最新 transactionId
+#GET http://localhost/task/register/obtain
+
+POST http://localhost/task/register/submit
+Content-Type: application/json
+
+{
+  "transactionId": 2,
+  "type": "local",
+  "priority": 100,
+  "cron": null,
+  "script": ["help", "gogogo"]
+}
