@@ -38,9 +38,13 @@ public class CommonEncoder extends MessageToByteEncoder<Object> {
             out.writeInt(PackageType.RESPONSE_PACK.getCode());
         }
         out.writeInt(serializer.getCode());
-        byte[] bytes = serializer.serialize(msg);
-        out.writeInt(bytes.length);
-        out.writeBytes(bytes);
+        try {
+            byte[] bytes = serializer.serialize(msg);
+            out.writeInt(bytes.length);
+            out.writeBytes(bytes);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }

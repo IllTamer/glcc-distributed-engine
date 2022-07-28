@@ -4,6 +4,7 @@ import dev.jianmu.engine.consumer.LocalStateServiceImpl;
 import dev.jianmu.engine.rpc.service.loadbalancer.LoadBalancer;
 import dev.jianmu.engine.rpc.util.Assert;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
@@ -25,10 +26,13 @@ public class WeightedMinLoadLoadBalancer implements LoadBalancer {
 
     public static Double MIN_MEMORY_LOAD = 10D;
 
-    private final NodeInstancePool nodeInstancePool;
+    @Setter
+    private NodeInstancePool nodeInstancePool;
 
     @Getter
     private Integer latestNodeLoad;
+
+    public WeightedMinLoadLoadBalancer() {}
 
     public WeightedMinLoadLoadBalancer(NodeInstancePool nodeInstancePool) {
         this.nodeInstancePool = nodeInstancePool;

@@ -2,6 +2,8 @@ package dev.jianmu.engine.consumer;
 
 import com.google.gson.JsonObject;
 
+import java.util.Map;
+
 public interface LocalStateService {
 
     /**
@@ -32,6 +34,6 @@ public interface LocalStateService {
     /**
      * @return CPU使用率，内存使用率
      * */
-    JsonObject info();
+    Map<String, Object> info();
 
 }

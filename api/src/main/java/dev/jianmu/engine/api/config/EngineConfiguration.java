@@ -58,7 +58,7 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
                 properties.getService().getRegisterPort(),
                 properties.getService().getServiceRegistry(),
                 properties.getServiceProvider(),
-                ApiApplication.class,
+                "dev.jianmu.engine.api.service",
                 properties.getService().getMap(),
                 aClass -> {
                     try {
@@ -101,9 +101,9 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
                             ch.pipeline()
                                     // 应用层心跳机制
                                     .addLast(new IdleStateHandler(30, 0, 0, TimeUnit.SECONDS))
-                                    .addLast(new CommonEncoder(properties.getSerializer()))
-                                    .addLast(new CommonDecoder())
-                                    .addLast(new NettyServerHandler(serviceProvider));
+                                    .addLast(new CommonEncoder(properties.getSerializer())) // out
+                                    .addLast(new CommonDecoder()) // in
+                                    .addLast(new NettyServerHandler(serviceProvider)); // in
                         }
                     })
                     .bind(port).sync();
@@ -149,8 +149,9 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
         nodeInstancePool.setRpcClientProxy(rpcClientProxy);
 
         EngineProperties.Service serviceProperties = properties.getService();
-        if (serviceProperties.getLoadBalancer() == null)
-            serviceProperties.setLoadBalancer(new WeightedMinLoadLoadBalancer(nodeInstancePool));
+        final LoadBalancer loadBalancer = serviceProperties.getLoadBalancer();
+        if (loadBalancer instanceof WeightedMinLoadLoadBalancer)
+            ((WeightedMinLoadLoadBalancer) loadBalancer).setNodeInstancePool(nodeInstancePool);
 
         SingletonFactory.setInstance(ConsumerService.class, new ConsumerServiceImpl());
         registerApplication.refreshNodes();

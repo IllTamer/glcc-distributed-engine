@@ -53,7 +53,7 @@ public class NettyClient {
             // 向服务器发送请求并设置监听
             channel.writeAndFlush(rpcRequest).addListener((ChannelFutureListener) future1 -> {
                 if(future1.isSuccess()){
-                    log.debug(String.format("客户端发送消息：%s", rpcRequest));
+                    log.debug("客户端发送消息: {}", rpcRequest);
                 } else {
                     future1.channel().close();
                     resultFuture.completeExceptionally(future1.cause());

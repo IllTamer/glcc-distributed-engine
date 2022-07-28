@@ -3,6 +3,7 @@ package dev.jianmu.engine.rpc.codec;
 import dev.jianmu.engine.rpc.PackageType;
 import dev.jianmu.engine.rpc.RpcError;
 import dev.jianmu.engine.rpc.exception.RpcException;
+import dev.jianmu.engine.rpc.exception.SerializeException;
 import dev.jianmu.engine.rpc.serializer.CommonSerializer;
 import dev.jianmu.engine.rpc.translate.RpcRequest;
 import dev.jianmu.engine.rpc.translate.RpcResponse;
@@ -48,13 +49,15 @@ public class CommonDecoder extends ReplayingDecoder<Object> {
             throw new RpcException(RpcError.UNKNOWN_PACKAGE_TYPE);
         }
         int serializerCode = buf.readInt();
-        CommonSerializer serializer = CommonSerializer.getByCode(serializerCode);
-        if (serializer == null) {
+        CommonSerializer serializer;
+        try {
+            serializer = CommonSerializer.getByCode(serializerCode);
+        } catch (SerializeException e) {
             log.error("不识别的反序列化器：{}", serializerCode);
             throw new RpcException(RpcError.UNKNOWN_SERIALIZER);
         }
         int length = buf.readInt();
-        System.out.println(length + " " + buf);
+        log.debug(length + " " + buf);
         byte[] bytes = new byte[length];
         buf.readBytes(bytes);
         Object object = serializer.deserialize(bytes, packageClass);

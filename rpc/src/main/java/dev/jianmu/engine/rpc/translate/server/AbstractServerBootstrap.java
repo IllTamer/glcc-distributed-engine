@@ -35,7 +35,7 @@ public abstract class AbstractServerBootstrap {
             @NotNull Integer port,
             @NotNull ServiceRegistry serviceRegistry,
             @NotNull ServiceProvider serviceProvider,
-            @NotNull Class<?> mainClass,
+            @NotNull String servicePackage,
             @Nullable Map<String, Class<?>> serviceMap,
             @NotNull Function<Class<?>, Object> function
     ) {
@@ -44,24 +44,24 @@ public abstract class AbstractServerBootstrap {
         this.serviceRegistry = serviceRegistry;
         this.serviceProvider = serviceProvider;
         this.function = function;
-        scanServices(mainClass, serviceMap == null ? new TreeMap<>() : serviceMap);
+        scanServices(servicePackage, serviceMap == null ? new TreeMap<>() : serviceMap);
     }
 
     /**
      * 注册RPC服务实例
      * <br>
      * 优先级: spring bean > config serviceMap > scan Classes
-     * @param mainClass 服务器注解 @ServiceScan 的主启动类
+     * @param servicePackage 服务器注解 @ServiceScan 的扫描路径
      * */
     @SneakyThrows(UnsupportedEncodingException.class)
-    private void scanServices(@NotNull Class<?> mainClass, @NotNull Map<String, Class<?>> serviceMap) {
-        Assert.notNull(mainClass, "The 'mainClass' can not be null");
+    private void scanServices(@NotNull String servicePackage, @NotNull Map<String, Class<?>> serviceMap) {
+        Assert.notNull(servicePackage, "The 'servicePackage' can not be null");
         String path = this.getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
         File file = new File(URLDecoder.decode(path, "UTF-8"));
         Assert.isTrue(file.exists(), "Can not find jar file");
 
         Collection<Class<?>> configServices = serviceMap.values();
-        Set<Class<?>> classSet = ClassUtil.getClasses(file, this.getClass().getClassLoader()).stream()
+        Set<Class<?>> classSet = ClassUtil.getClasses(servicePackage, this.getClass().getClassLoader(), false).stream()
                 .filter(clazz -> clazz.isAnnotationPresent(RpcService.class) && !configServices.contains(clazz))
                 .collect(Collectors.toSet());
         for (Map.Entry<String, Class<?>> entry : serviceMap.entrySet()) {

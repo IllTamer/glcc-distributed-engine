@@ -20,23 +20,23 @@ public class ShellWorker extends Worker {
     }
 
     @Override
-    @SneakyThrows({IOException.class, InterruptedException.class})
-    public void runTask(Task task) {
-        Process process = Runtime.getRuntime().exec(new String[] {"/bin/bash", "-c", task.getScript()});
-        final int status = process.waitFor();
-        if (status == 0)
-            log.info("Task({}#{}) run succeed", task.getUuid(), task.getTransactionId());
-        else {
-            try (
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream(), DEFAULT_CHARSET))
-            ) {
-                String line;
-                StringBuilder errMessage = new StringBuilder();
-                while ((line = reader.readLine()) != null)
-                    errMessage.append('\n').append(line);
-                log.error("Task({}#{}) run failed:{}", task.getUuid(), task.getTransactionId(), errMessage);
-            }
-        }
+    public void runTask(Task task) throws Exception {
+        log.info("Task({}#{}) run succeed", task.getUuid(), task.getTransactionId());
+//        Process process = Runtime.getRuntime().exec(new String[] {"/bin/bash", "-c", task.getScript()});
+//        final int status = process.waitFor();
+//        if (status == 0)
+//            log.info("Task({}#{}) run succeed", task.getUuid(), task.getTransactionId());
+//        else {
+//            try (
+//                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream(), DEFAULT_CHARSET))
+//            ) {
+//                String line;
+//                StringBuilder errMessage = new StringBuilder();
+//                while ((line = reader.readLine()) != null)
+//                    errMessage.append('\n').append(line);
+//                log.error("Task({}#{}) run failed:{}", task.getUuid(), task.getTransactionId(), errMessage);
+//            }
+//        }
     }
 
     @Override

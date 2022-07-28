@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +46,7 @@ public class RegisterApplication {
     public void refreshNodes() {
         nodeInstancePool.refreshLocalNode();
         final List<ExecutionNode> broadcast = nodeInstancePool.broadcast();
-        if (broadcast.size() <= 1)
+        if (broadcast.size() == 0)
             log.debug("No available remote node");
     }
 
@@ -74,7 +75,8 @@ public class RegisterApplication {
             for (int i = 0; i < size; ++i) {
                 final ConsumerService proxy = rpcClientProxy.getProxy(ConsumerService.class);
                 final String workerId = proxy.dispatchTask(task);
-                workerIdMap.put(rpcClientProxy.getClient().getLastAddress().getHostString(), workerId);
+                final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
+                workerIdMap.put(lastAddress.getHostString() + ':' + lastAddress.getPort(), workerId);
             }
         } else {
             final RpcClientProxy rpcClientProxy = nodeInstancePool.getRpcClientProxy();
@@ -93,7 +95,11 @@ public class RegisterApplication {
                 }
             }
             final String workerId = service.dispatchTask(task);
-            workerIdMap.put(rpcClientProxy.getClient().getLastAddress().getHostString(), workerId);
+            final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
+            String host = "local".equals(task.getType()) ?
+                    "localhost:" + nodeInstancePool.getLocalPersistentNode().getAddress().getPort() :
+                    lastAddress.getHostString() + ':' + lastAddress.getPort();
+            workerIdMap.put(host, workerId);
         }
         return workerIdMap;
     }

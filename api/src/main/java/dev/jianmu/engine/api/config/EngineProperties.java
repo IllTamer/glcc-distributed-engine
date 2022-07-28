@@ -1,5 +1,6 @@
 package dev.jianmu.engine.api.config;
 
+import dev.jianmu.engine.register.WeightedMinLoadLoadBalancer;
 import dev.jianmu.engine.rpc.annotation.RpcService;
 import dev.jianmu.engine.rpc.provider.DefaultServiceProvider;
 import dev.jianmu.engine.rpc.provider.ServiceProvider;
@@ -72,7 +73,7 @@ public class EngineProperties {
         /**
          * 负载均衡策略
          * */
-        private LoadBalancer loadBalancer;
+        private LoadBalancer loadBalancer = new WeightedMinLoadLoadBalancer();
 
         /**
          * 服务注册策略

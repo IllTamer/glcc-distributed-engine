@@ -37,7 +37,7 @@ public abstract class Worker {
         this.type = type;
     }
 
-    abstract public void runTask(Task task);
+    abstract public void runTask(Task task) throws Exception;
 
     abstract public String parseScript(List<String> scripts);
 

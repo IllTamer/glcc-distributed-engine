@@ -47,11 +47,11 @@ public class ChannelProvider {
             @Override
             protected void initChannel(NioSocketChannel ch) {
                 ch.pipeline()
-                        .addLast(new CommonEncoder(serializer))
+                        .addLast(new CommonEncoder(serializer)) // out
                         // 心跳检测 如果 5 秒内 write() 方法未被调用则触发一次 userEventTrigger() 方法
                         .addLast(new IdleStateHandler(0, 5, 0, TimeUnit.SECONDS))
-                        .addLast(new CommonDecoder())
-                        .addLast(new NettyClientHandler(serializer));
+                        .addLast(new CommonDecoder()) // in
+                        .addLast(new NettyClientHandler(serializer)); // in
             }
         });
         try {

@@ -30,9 +30,10 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
             }
             log.debug("服务端接收到请求：{}", msg);
             Object response = requestHandler.handle(msg);
+            log.debug("服务端响应结果: {}", response);
             if (ctx.channel().isActive() && ctx.channel().isWritable()) {
-                // 此处通道未 workerGroup 中的，NettyServer 中创建的是 bossGroup 的
-                ctx.writeAndFlush(response);
+                // 此处通道为 workerGroup 中的，NettyServer 中创建的是 bossGroup 的
+                ctx.channel().writeAndFlush(response);
             } else {
                 log.error("通道不可读写");
             }

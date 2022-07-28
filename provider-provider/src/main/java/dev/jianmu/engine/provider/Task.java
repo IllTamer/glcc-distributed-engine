@@ -10,6 +10,7 @@ import lombok.Setter;
 import lombok.ToString;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -21,7 +22,9 @@ import java.util.List;
 @Setter
 @ToString
 @TableName("jianmu_engine_task")
-public class Task implements Comparable<Integer> {
+public class Task implements Comparable<Task>, Serializable {
+
+    private static final long serialVersionUID = 765743073L;
 
     @TableId(type = IdType.AUTO)
     private Integer id;
@@ -88,8 +91,8 @@ public class Task implements Comparable<Integer> {
     private LocalDateTime endTime;
 
     @Override
-    public int compareTo(@NotNull Integer o) {
-        return o.compareTo(priority);
+    public int compareTo(@NotNull Task o) {
+        return o.priority.compareTo(this.priority);
     }
 
 }

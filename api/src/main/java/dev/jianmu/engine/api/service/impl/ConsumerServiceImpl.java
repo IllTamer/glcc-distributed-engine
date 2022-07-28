@@ -11,11 +11,10 @@ import org.springframework.context.ApplicationContext;
 @RpcService
 public class ConsumerServiceImpl implements ConsumerService {
 
-    private final ConsumerApplication consumerApplication =
-            SingletonFactory.getInstance(ApplicationContext.class).getBean(ConsumerApplication.class);
-
     @Override
     public String dispatchTask(Task task) {
+        ConsumerApplication consumerApplication =
+                SingletonFactory.getInstance(ApplicationContext.class).getBean(ConsumerApplication.class);
         final ProviderInfo info = consumerApplication.push(task);
         // TODO thread pool usage
         return info.getWorkerId();

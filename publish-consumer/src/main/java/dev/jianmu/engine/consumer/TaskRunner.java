@@ -3,6 +3,7 @@ package dev.jianmu.engine.consumer;
 import dev.jianmu.engine.provider.Task;
 import dev.jianmu.engine.provider.TaskStatus;
 import dev.jianmu.engine.provider.Worker;
+import dev.jianmu.engine.provider.event.TaskFinishEvent;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
@@ -25,12 +26,12 @@ public class TaskRunner implements Runnable {
     private final long createTime = System.currentTimeMillis();
     private final TreeSet<Task> prioritySet = new TreeSet<>();
 
-    private final Consumer<Task> publishConsumer;
+    private final Consumer<TaskFinishEvent> publishConsumer;
     private final Consumer<Task> databaseConsumer;
     @Getter
     private final Worker worker;
 
-    public TaskRunner(Consumer<Task> publishConsumer, Consumer<Task> databaseConsumer) {
+    public TaskRunner(Consumer<TaskFinishEvent> publishConsumer, Consumer<Task> databaseConsumer) {
         this.publishConsumer = publishConsumer;
         this.databaseConsumer = databaseConsumer;
         this.worker = Worker.WORKER_MAP.get(Worker.Type.SHELL);
@@ -55,7 +56,12 @@ public class TaskRunner implements Runnable {
                 log.error("Error occurred when refresh task data in database", e);
             }
             try {
-                publishConsumer.accept(task);
+                publishConsumer.accept(
+                        TaskFinishEvent.builder()
+                                .task(task)
+                                .status(task.getStatus())
+                                .build()
+                );
             } catch (Exception e) {
                 log.error("Unexpected exception occurred when publish task({})", task, e);
             }
@@ -69,6 +75,7 @@ public class TaskRunner implements Runnable {
         if (prioritySet.size() == MAX_PER_WAIT_LENGTH) {
             return false;
         }
+        task.setWorkerId(worker.getId());
         prioritySet.add(task);
         return true;
     }

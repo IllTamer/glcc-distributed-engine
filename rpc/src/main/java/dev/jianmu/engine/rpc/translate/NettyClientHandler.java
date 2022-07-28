@@ -29,7 +29,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse<
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, RpcResponse msg) {
         try {
-            log.debug(String.format("客户端接收到消息：%s", msg));
+            log.debug("客户端接收到消息: {}", msg);
             unprocessedRequests.complete(msg);
         } finally {
             ReferenceCountUtil.release(msg);
@@ -58,8 +58,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse<
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        log.error("过程调用中有错误发生：");
-        cause.printStackTrace();
+        log.error("过程调用中有错误发生", cause);
         ctx.close();
     }
 

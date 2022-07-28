@@ -89,14 +89,14 @@ public class NodeInstancePool {
      * 更新本地节点数据
      * */
     public void refreshLocalNode() {
-        this.localPersistentNode.setNodeInfo(new Gson().fromJson(new LocalStateServiceImpl().info(), Map.class));
+        this.localPersistentNode.setNodeInfo(new LocalStateServiceImpl().info());
     }
 
     private static ExecutionNode refreshNode(ExecutionNode node, RpcClientProxy rpcClientProxy) {
         try {
             RpcClientProxy copyProxy = rpcClientProxy.copy(name -> node.getAddress());
             LocalStateService service = copyProxy.getProxy(LocalStateService.class);
-            Map<String, Object> nodeInfo = new Gson().fromJson(service.info(), Map.class);
+            Map<String, Object> nodeInfo = service.info();
             node.setNodeInfo(nodeInfo);
             node.setModifyTime(new Date());
             node.setDataVersion(node.getDataVersion()+1);

@@ -23,8 +23,8 @@ public class HessianSerializer implements CommonSerializer {
             output = new HessianOutput(byteOutput);
             output.writeObject(object);
             return byteOutput.toByteArray();
-        } catch (IOException e) {
-            log.error("序列化时有错误发生" + e);
+        } catch (Exception | Error e) {
+            log.error("序列化时有错误发生，当前对象: {}", object, e);
             throw new SerializeException("序列化时有错误发生");
         } finally {
             if (output != null) {
@@ -43,7 +43,7 @@ public class HessianSerializer implements CommonSerializer {
         try (ByteArrayInputStream byteInput = new ByteArrayInputStream(bytes)) {
             input = new HessianInput(byteInput);
             return input.readObject();
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("序列化时有错误发生" + e);
             throw new SerializeException("序列化时有错误发生");
         } finally {

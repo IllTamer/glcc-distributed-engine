@@ -1,16 +1,21 @@
 package dev.jianmu.engine.rpc.util;
 
+import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.JarURLConnection;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.util.*;
 import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.jar.JarInputStream;
 import java.util.stream.Collectors;
 
@@ -69,37 +74,82 @@ public class ClassUtil {
         return map;
     }
 
-    public static Set<Class<?>> getClasses(File jarFile, ClassLoader classLoader) {
-        if (!jarFile.exists()) {
-            return new HashSet<>();
+    @NotNull
+    @SneakyThrows(IOException.class)
+    public static List<Class<?>> getClasses(String packageName, ClassLoader classLoader, boolean initialize) {
+        List<Class<?>> classes = new ArrayList<>();
+        String packageDirName = packageName.replace('.', '/');
+        Enumeration<URL> dirs = classLoader.getResources(packageDirName);
+        while (dirs.hasMoreElements()) {
+            URL url = dirs.nextElement();
+            String protocol = url.getProtocol();
+            if ("file".equals(protocol)) {
+                String filePath = URLDecoder.decode(url.getFile(), "UTF-8");
+                classes.addAll(findClassWithDirectory(packageName, filePath, classLoader, initialize));
+            } else if ("jar".equals(protocol)) {
+                classes.addAll(findClassWithJar(packageName, url, classLoader, initialize));
+            }
         }
-        try {
-            return gather(jarFile.toURI().toURL(), classLoader);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new HashSet<>();
+        return classes;
     }
 
-    private static Set<Class<?>> gather(URL jar, ClassLoader classLoader){
-        Set<Class<?>> set = new HashSet<>();
-        try (
-                JarInputStream input = new JarInputStream(jar.openStream());
-        ) {
-            while (true) {
-                JarEntry entry = input.getNextJarEntry();
-                if (entry == null) {
-                    break;
+    @NotNull
+    public static List<Class<?>> findClassWithDirectory(String packageName, String packagePath, ClassLoader classLoader, boolean initialize) {
+        // 获取此包的目录 建立一个File
+        File dir = new File(packagePath);
+        if (!dir.exists() || !dir.isDirectory())
+            return new ArrayList<>(0);
+        File[] dirs = dir.listFiles();
+        if (dirs == null)
+            return new ArrayList<>(0);
+
+        List<Class<?>> classes = new ArrayList<>();
+        // 循环所有文件
+        for (File file : dirs) {
+            if (file.isDirectory()) {
+                classes.addAll(findClassWithDirectory(packageName + "." + file.getName(),
+                        file.getAbsolutePath(), classLoader, initialize));
+            } else if (file.getName().endsWith(".class")) {
+                String className = file.getName().substring(0, file.getName().length() - 6);
+                try {
+                    classes.add(Class.forName(packageName + '.' + className, initialize, classLoader));
                 }
-                String name = entry.getName();
-                if (!name.isEmpty() && name.endsWith(".class")) {
-                    System.out.println((name = name.substring(0, name.length()-6).replace('/', '.')));
-                    set.add(classLoader.loadClass(name));
+                catch (ClassNotFoundException e) {
+                    e.printStackTrace();
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
-        return set;
+        return classes;
+    }
+
+    @NotNull
+    @SneakyThrows(IOException.class)
+    public static List<Class<?>> findClassWithJar(String packageName, URL url, ClassLoader classLoader, boolean initialize) {
+        List<Class<?>> classes = new ArrayList<>();
+        String packageDirName = packageName.replace('.', '/');
+        JarFile jar = ((JarURLConnection) url.openConnection()).getJarFile();
+        Enumeration<JarEntry> entries = jar.entries();
+        while (entries.hasMoreElements()) {
+            // 获取jar里的一个实体 可以是目录 和一些jar包里的其他文件 如META-INF等文件
+            JarEntry entry = entries.nextElement();
+            if (entry.isDirectory()) continue;
+
+            String name = entry.getName();
+            if (name.charAt(0) == '/') {
+                name = name.substring(1);
+            }
+
+            // 如果前半部分和定义的包名相同
+            if (name.startsWith(packageDirName) && name.endsWith(".class")) {
+                // 去掉后面的".class"
+                String className = name.substring(0, name.length() - 6).replace('/', '.');
+                try {
+                    classes.add(Class.forName(className, initialize, classLoader));
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return classes;
     }
 }

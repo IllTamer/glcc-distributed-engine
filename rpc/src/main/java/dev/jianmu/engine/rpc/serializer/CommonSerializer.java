@@ -10,11 +10,13 @@ public interface CommonSerializer {
 
     int JSON_SERIALIZER = 1;
 
+    // hessian 有 bug, invoke ConsumerService#dispatchTask 时序列化 Task 会栈溢出
+    @Deprecated
     int HESSIAN_SERIALIZER = 2;
 
     int PROTOBUF_SERIALIZER = 3;
 
-    int DEFAULT_SERIALIZER = HESSIAN_SERIALIZER;
+    int DEFAULT_SERIALIZER = PROTOBUF_SERIALIZER;
 
     byte[] serialize(Object object);
 
