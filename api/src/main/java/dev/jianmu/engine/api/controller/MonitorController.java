@@ -1,6 +1,9 @@
 package dev.jianmu.engine.api.controller;
 
-import dev.jianmu.engine.api.vo.DispatchProgressVO;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import dev.jianmu.engine.api.service.TaskService;
+import dev.jianmu.engine.api.vo.TaskProcessVO;
+import dev.jianmu.engine.provider.Task;
 import dev.jianmu.engine.register.ExecutionNode;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -8,6 +11,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/task/monitor")
 public class MonitorController {
+
+    private final TaskService taskService;
+
+    public MonitorController(TaskService taskService) {
+        this.taskService = taskService;
+    }
 
     /**
      * 暂停任务
@@ -24,8 +33,18 @@ public class MonitorController {
      * 查询任务调度过程
      * */
     @RequestMapping("progress")
-    public DispatchProgressVO checkProgress(String taskUUID) {
-        return null;
+    public TaskProcessVO checkProgress(String taskUUID) {
+        final LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<>();
+        Task task = taskService.getOne(wrapper.eq(Task::getUuid, taskUUID));
+        return TaskProcessVO.builder()
+                .uuid(task.getUuid())
+                .transactionId(task.getTransactionId())
+                .type(task.getType())
+                .workerId(task.getWorkerId())
+                .status(task.getStatus())
+                .startTime(task.getStartTime())
+                .endTime(task.getEndTime())
+                .build();
     }
 
 }

@@ -12,7 +12,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 任务实体类
@@ -55,7 +54,10 @@ public class Task implements Comparable<Task>, Serializable {
      * */
     private Integer priority;
 
-    // 计划任务表达式
+    /**
+     * 计划任务表达式
+     * @see CronParser
+     * */
     private String cron;
 
     /**

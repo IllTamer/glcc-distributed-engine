@@ -1,7 +1,7 @@
 package dev.jianmu.engine.api;
 
 import dev.jianmu.engine.api.config.application.RegisterApplication;
-import dev.jianmu.engine.consumer.LocalStateServiceImpl;
+import dev.jianmu.engine.register.util.CronParser;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,7 +14,7 @@ class ApiApplicationTests {
 
     @Test
     void rpcInvoke() throws InterruptedException {
-        System.out.println(registerApplication.getNodeInstancePool().getTempExecutionNodes());
+        System.out.println(registerApplication.getNodeInstancePool().getLocalPersistentNode().getNodeInfo());
 //        final Map<String, Class<?>> serviceMap = properties.getService().getMap();
 //        final Set<Discovery> discoveries = properties.getService().getDiscoveries();
 //        final LoadBalancer loadBalancer = properties.getService().getLoadBalancer();
@@ -22,15 +22,10 @@ class ApiApplicationTests {
 //        RpcClientProxy proxy = new RpcClientProxy(client, serviceMap);
 //        HelloService service = proxy.getProxy(HelloService.class);
 //        System.out.println(service.hello("IllTamer"));
-        Thread.sleep(9999999L);
     }
 
     public static void main(String[] args) {
-        Integer a = null;
-        synchronized (a) {
-            System.out.println(1);
-        }
-        System.out.println(2);
+        System.out.println(CronParser.parse("5s9s1m7s0s"));
     }
 
 }

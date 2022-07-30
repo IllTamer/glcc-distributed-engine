@@ -1,6 +1,6 @@
 package dev.jianmu.engine.api.config.application;
 
-import dev.jianmu.engine.api.config.ScheduleConfiguration;
+import dev.jianmu.engine.api.config.ScheduledConfiguration;
 import dev.jianmu.engine.api.service.TaskService;
 import dev.jianmu.engine.consumer.TaskRunner;
 import dev.jianmu.engine.provider.ProviderInfo;
@@ -87,7 +87,7 @@ public class ConsumerApplication {
                 60L,
                 TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(),
-                new ScheduleConfiguration.CustomThreadFactory("consumer-pool-")
+                new ScheduledConfiguration.CustomThreadFactory("consumer-pool-")
         );
     }
 
