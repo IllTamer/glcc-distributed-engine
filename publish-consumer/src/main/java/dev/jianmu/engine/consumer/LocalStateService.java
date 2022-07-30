@@ -1,7 +1,5 @@
 package dev.jianmu.engine.consumer;
 
-import com.google.gson.JsonObject;
-
 import java.util.Map;
 
 public interface LocalStateService {

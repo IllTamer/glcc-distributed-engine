@@ -1,6 +1,5 @@
 package dev.jianmu.engine.api.config;
 
-import dev.jianmu.engine.api.ApiApplication;
 import dev.jianmu.engine.api.config.application.RegisterApplication;
 import dev.jianmu.engine.api.service.ConsumerService;
 import dev.jianmu.engine.api.service.impl.ConsumerServiceImpl;

@@ -1,6 +1,5 @@
 package dev.jianmu.engine.consumer;
 
-import com.google.gson.JsonObject;
 import com.sun.management.OperatingSystemMXBean;
 import dev.jianmu.engine.rpc.annotation.RpcService;
 

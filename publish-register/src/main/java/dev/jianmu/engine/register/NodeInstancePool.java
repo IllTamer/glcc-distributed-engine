@@ -1,6 +1,5 @@
 package dev.jianmu.engine.register;
 
-import com.google.gson.Gson;
 import dev.jianmu.engine.consumer.LocalStateService;
 import dev.jianmu.engine.consumer.LocalStateServiceImpl;
 import dev.jianmu.engine.rpc.service.Discovery;

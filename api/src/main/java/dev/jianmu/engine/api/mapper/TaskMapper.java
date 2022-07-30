@@ -2,7 +2,6 @@ package dev.jianmu.engine.api.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import dev.jianmu.engine.provider.Task;
-import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
