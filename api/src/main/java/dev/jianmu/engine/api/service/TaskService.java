@@ -15,6 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class TaskService extends ServiceImpl<TaskMapper, Task> {
 
     @Transactional
+    public Task queryByUUID(String uuid) {
+        final LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Task::getUuid, uuid);
+        return getOne(wrapper);
+    }
+
+    @Transactional
     public boolean refreshTask(Task task) {
         LambdaUpdateWrapper<Task> wrapper = new LambdaUpdateWrapper<>();
         return getBaseMapper().update(task, wrapper

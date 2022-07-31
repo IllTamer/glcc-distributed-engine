@@ -4,9 +4,11 @@ import dev.jianmu.engine.api.config.application.RegisterApplication;
 import dev.jianmu.engine.api.dto.TaskDTO;
 import dev.jianmu.engine.api.pojo.EngineLock;
 import dev.jianmu.engine.api.service.PessimisticLockService;
+import dev.jianmu.engine.api.vo.TaskPublishVO;
 import dev.jianmu.engine.provider.Task;
 import dev.jianmu.engine.rpc.util.Assert;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,10 +40,27 @@ public class RegisterController {
      *  Key: hostName,
      *  Value: workerId
      * */
+    @NotNull
     @RequestMapping("/submit")
-    public @Nullable Map<String, String> submitTask(@RequestBody TaskDTO taskDTO) {
+    public TaskPublishVO submitTask(@RequestBody TaskDTO taskDTO) {
         // 创建Task
         Task task = registerApplication.createTask(taskDTO);
+        return doSubmitTask(task);
+    }
+
+    /**
+     * 获取最新任务Id
+     * <p>
+     * 在 #submitTask() 前调用，用于获取传入任务的全局序列号
+     * */
+    @RequestMapping("/obtain")
+    public Long obtainTaskId() {
+        registerApplication.refreshNodes();
+        return registerApplication.getNextTransactionId();
+    }
+
+    @NotNull
+    protected TaskPublishVO doSubmitTask(Task task) {
         // 更新Node状态(CPU使用率，内存使用率等)
         registerApplication.refreshNodes();
         Map<String, String> workerIdMap = null;
@@ -58,22 +77,14 @@ public class RegisterController {
         } catch (Exception e) {
             log.warn("Something happened when publish Task({})", task, e);
         } finally {
+            // 分布式锁，出锁(允许新增)
             if (lock != null)
                 pessimisticLockService.unlock(lock);
         }
-        // 分布式锁，出锁(允许新增)
-        return workerIdMap;
-    }
-
-    /**
-     * 获取最新任务Id
-     * <p>
-     * 在 #submitTask() 前调用，用于获取传入任务的全局序列号
-     * */
-    @RequestMapping("/obtain")
-    public Long obtainTaskId() {
-        registerApplication.refreshNodes();
-        return registerApplication.getNextTransactionId();
+        return TaskPublishVO.builder()
+                .uuid(task.getUuid())
+                .workerIdMap(workerIdMap)
+                .build();
     }
 
 }

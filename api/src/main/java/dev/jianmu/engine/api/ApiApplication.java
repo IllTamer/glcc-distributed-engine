@@ -12,7 +12,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 public class ApiApplication {
 
-    // TODO 调通任务发布流程
     public static void main(String[] args) {
         SingletonFactory.setInstance(ApplicationContext.class, SpringApplication.run(ApiApplication.class, args));
     }

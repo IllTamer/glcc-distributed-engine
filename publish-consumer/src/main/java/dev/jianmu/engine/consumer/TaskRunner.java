@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.time.LocalDateTime;
 import java.util.TreeSet;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * 任务执行类
@@ -27,13 +28,19 @@ public class TaskRunner implements Runnable {
     private final TreeSet<Task> prioritySet = new TreeSet<>();
 
     private final Consumer<TaskFinishEvent> publishConsumer;
-    private final Consumer<Task> databaseConsumer;
+    private final Consumer<Task> refreshConsumer;
+    private final Function<String, Task> queryFunction;
     @Getter
     private final Worker worker;
 
-    public TaskRunner(Consumer<TaskFinishEvent> publishConsumer, Consumer<Task> databaseConsumer) {
+    public TaskRunner(
+            Consumer<TaskFinishEvent> publishConsumer,
+            Consumer<Task> refreshConsumer,
+            Function<String, Task> queryFunction
+    ) {
         this.publishConsumer = publishConsumer;
-        this.databaseConsumer = databaseConsumer;
+        this.refreshConsumer = refreshConsumer;
+        this.queryFunction = queryFunction;
         this.worker = Worker.WORKER_MAP.get(Worker.Type.SHELL);
     }
 
@@ -41,8 +48,16 @@ public class TaskRunner implements Runnable {
     public void run() {
         Task task;
         while ((task = dispatchTask()) != null) {
+            final Task store = queryFunction.apply(task.getUuid());
+            if (store.getStatus() == TaskStatus.PAUSE) {
+                log.debug("Task#{} is suspended, skip execution", task.getUuid());
+                // 清除分配标志，恢复时重新发布
+                store.setWorkerId(null);
+                continue;
+            }
             task.setStatus(TaskStatus.RUNNING);
             try {
+                refreshConsumer.accept(task);
                 worker.runTask(task);
                 task.setStatus(TaskStatus.EXECUTION_SUCCEEDED);
             } catch (Exception e) {
@@ -51,7 +66,7 @@ public class TaskRunner implements Runnable {
             }
             task.setEndTime(LocalDateTime.now());
             try {
-                databaseConsumer.accept(task);
+                refreshConsumer.accept(task);
             } catch (Exception e) {
                 log.error("Error occurred when refresh task data in database", e);
             }

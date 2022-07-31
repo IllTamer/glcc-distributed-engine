@@ -6,7 +6,7 @@ package dev.jianmu.engine.provider;
 public enum TaskStatus {
 
     /**
-     * 阻塞
+     * 等待执行中(阻塞)
      * */
     WAITING,
 
@@ -14,6 +14,11 @@ public enum TaskStatus {
      * 执行
      * */
     RUNNING,
+
+    /**
+     * 暂停中
+     * */
+    PAUSE,
 
     /**
      * 执行成功

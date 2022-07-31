@@ -69,7 +69,11 @@ public class ConsumerApplication {
             if (runner != null) {
                 taskService.startRunner(runner);
             }
-            runner = new TaskRunner(publisher::publishEvent, taskService::refreshTask);
+            runner = new TaskRunner(
+                    publisher::publishEvent,
+                    taskService::refreshTask,
+                    taskService::queryByUUID
+            );
             runner.push(task);
         }
         lock.unlock();
