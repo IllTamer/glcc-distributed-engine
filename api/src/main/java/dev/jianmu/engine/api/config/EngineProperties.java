@@ -1,5 +1,7 @@
 package dev.jianmu.engine.api.config;
 
+import dev.jianmu.engine.monitor.event.filter.AvailabilityFilter;
+import dev.jianmu.engine.monitor.event.filter.WaitTaskCountFilter;
 import dev.jianmu.engine.register.WeightedMinLoadLoadBalancer;
 import dev.jianmu.engine.rpc.annotation.RpcService;
 import dev.jianmu.engine.rpc.provider.DefaultServiceProvider;
@@ -36,6 +38,12 @@ public class EngineProperties {
 
     @NotNull
     private ServiceProvider serviceProvider = new DefaultServiceProvider();
+
+    /**
+     * 可用性过滤器
+     * */
+    @NotNull
+    private AvailabilityFilter availabilityFilter = new WaitTaskCountFilter();
 
     private Service service;
 

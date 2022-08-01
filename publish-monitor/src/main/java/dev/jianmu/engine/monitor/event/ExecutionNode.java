@@ -1,4 +1,4 @@
-package dev.jianmu.engine.register;
+package dev.jianmu.engine.monitor.event;
 
 import lombok.Builder;
 import lombok.Data;
@@ -48,7 +48,7 @@ public class ExecutionNode {
     /**
      * 节点数据
      * <p>
-     * @see dev.jianmu.engine.consumer.LocalStateService
+     * see dev.jianmu.engine.consumer.LocalStateService
      * */
     private Map<String, Object> nodeInfo;
 
@@ -56,6 +56,11 @@ public class ExecutionNode {
      * 节点类型
      * */
     private Type type;
+
+    /**
+     * 节点状态
+     * */
+    private Status status;
 
     public enum Type {
 
@@ -72,6 +77,25 @@ public class ExecutionNode {
          * 持久化保持属性。适用于选举，分布式锁
          * */
         PERSISTENT;
+
+    }
+
+    public enum Status {
+
+        /**
+         * 可用
+         * */
+        AVAILABLE,
+
+        /**
+         * 任务执行能力过低
+         * */
+        OVERLOAD,
+
+        /**
+         * 失联
+         * */
+        DISCONNECTED
 
     }
 
