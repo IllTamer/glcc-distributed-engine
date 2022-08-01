@@ -1,7 +1,6 @@
 server:
   port: 81
 
-
 jianmu:
   engine:
     debug: true

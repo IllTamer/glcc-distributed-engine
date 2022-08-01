@@ -7,7 +7,7 @@ import dev.jianmu.engine.api.service.TaskService;
 import dev.jianmu.engine.provider.Task;
 import dev.jianmu.engine.provider.TaskStatus;
 import dev.jianmu.engine.provider.Worker;
-import dev.jianmu.engine.register.ExecutionNode;
+import dev.jianmu.engine.monitor.event.ExecutionNode;
 import dev.jianmu.engine.register.NodeInstancePool;
 import dev.jianmu.engine.register.OnlineNodeServiceDiscovery;
 import dev.jianmu.engine.register.WeightedMinLoadLoadBalancer;
@@ -44,7 +44,11 @@ public class RegisterApplication {
     ) {
         this.taskService = taskService;
         this.scheduledThreadPool = scheduledThreadPool;
-        this.nodeInstancePool = new NodeInstancePool(properties.getService().getDiscoveries(), properties.getService().getRegisterPort());
+        this.nodeInstancePool = new NodeInstancePool(
+                properties.getService().getDiscoveries(),
+                properties.getService().getRegisterPort(),
+                properties.getAvailabilityFilter()
+        );
     }
 
     public void refreshNodes() {
@@ -65,6 +69,7 @@ public class RegisterApplication {
 
     /**
      * 发布任务
+     * TODO 池化因所有节点不可用而阻塞的任务
      * @return Key: hostName, Value: workerId
      * */
     public Map<String, String> publish(Task task) {

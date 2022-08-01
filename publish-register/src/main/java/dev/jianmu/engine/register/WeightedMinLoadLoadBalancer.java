@@ -1,6 +1,7 @@
 package dev.jianmu.engine.register;
 
 import dev.jianmu.engine.consumer.LocalStateServiceImpl;
+import dev.jianmu.engine.monitor.event.ExecutionNode;
 import dev.jianmu.engine.rpc.service.loadbalancer.LoadBalancer;
 import dev.jianmu.engine.rpc.util.Assert;
 import lombok.Getter;

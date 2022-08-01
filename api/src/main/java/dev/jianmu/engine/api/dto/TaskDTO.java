@@ -1,6 +1,6 @@
 package dev.jianmu.engine.api.dto;
 
-import dev.jianmu.engine.register.ExecutionNode;
+import dev.jianmu.engine.monitor.event.ExecutionNode;
 import lombok.Getter;
 import lombok.Setter;
 

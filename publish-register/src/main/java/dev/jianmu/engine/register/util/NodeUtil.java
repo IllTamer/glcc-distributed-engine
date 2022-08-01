@@ -1,6 +1,6 @@
 package dev.jianmu.engine.register.util;
 
-import dev.jianmu.engine.register.ExecutionNode;
+import dev.jianmu.engine.monitor.event.ExecutionNode;
 import dev.jianmu.engine.rpc.translate.RpcRequest;
 import dev.jianmu.engine.rpc.translate.RpcResponse;
 import dev.jianmu.engine.rpc.translate.client.NettyClient;
