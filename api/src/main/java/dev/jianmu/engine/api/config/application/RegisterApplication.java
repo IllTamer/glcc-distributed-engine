@@ -2,17 +2,17 @@ package dev.jianmu.engine.api.config.application;
 
 import dev.jianmu.engine.api.config.EngineProperties;
 import dev.jianmu.engine.api.dto.TaskDTO;
-import dev.jianmu.engine.api.service.ConsumerService;
+import dev.jianmu.engine.api.service.FutureTaskService;
 import dev.jianmu.engine.api.service.TaskService;
+import dev.jianmu.engine.consumer.ConsumerService;
+import dev.jianmu.engine.monitor.event.ExecutionNode;
+import dev.jianmu.engine.provider.FutureTask;
 import dev.jianmu.engine.provider.Task;
 import dev.jianmu.engine.provider.TaskStatus;
 import dev.jianmu.engine.provider.Worker;
-import dev.jianmu.engine.monitor.event.ExecutionNode;
 import dev.jianmu.engine.register.NodeInstancePool;
 import dev.jianmu.engine.register.OnlineNodeServiceDiscovery;
-import dev.jianmu.engine.register.WeightedMinLoadLoadBalancer;
 import dev.jianmu.engine.register.util.CronParser;
-import dev.jianmu.engine.rpc.factory.SingletonFactory;
 import dev.jianmu.engine.rpc.service.loadbalancer.RoundRobinLoadBalancer;
 import dev.jianmu.engine.rpc.translate.RpcClientProxy;
 import lombok.Getter;
@@ -34,15 +34,18 @@ import java.util.concurrent.atomic.AtomicLong;
 public class RegisterApplication {
 
     private final TaskService taskService;
+    private final FutureTaskService futureTaskService;
     private final ScheduledExecutorService scheduledThreadPool;
     private final NodeInstancePool nodeInstancePool;
 
     public RegisterApplication(
             TaskService taskService,
+            FutureTaskService futureTaskService,
             ScheduledExecutorService scheduledThreadPool,
             EngineProperties properties
     ) {
         this.taskService = taskService;
+        this.futureTaskService = futureTaskService;
         this.scheduledThreadPool = scheduledThreadPool;
         this.nodeInstancePool = new NodeInstancePool(
                 properties.getService().getDiscoveries(),
@@ -71,22 +74,35 @@ public class RegisterApplication {
 
     /**
      * 发布任务
-     * TODO 池化因所有节点不可用而阻塞的任务
-     * @return Key: hostName, Value: workerId
+     * @return
+     *  1. Key: hostName, Value: workerId
+     *  2. Key: 'overload', Value: id (FutureTask)
+     *  3. Key: 'future', Value: id (FutureTask)
      * */
     public Map<String, String> publish(Task task) {
         Map<String, String> workerIdMap = new HashMap<>();
+        if (nodeInstancePool.getTempExecutionNodes().size() == 0) {
+            final FutureTask futureTask = FutureTask.parse(task);
+            // 储存因所有节点不可用而阻塞的任务
+            futureTaskService.save(futureTask);
+            workerIdMap.put("overload", futureTask.getId().toString());
+            return workerIdMap;
+        }
         // 校验有无重复 transactionId, 预先插入一次
         final boolean tryRecordInsert = taskService.tryRecordInsert(task);
         // 定时分发检测
         if (task.getCron() == null && !tryRecordInsert) return workerIdMap;
         if (task.getCron() != null) {
             if (tryRecordInsert) {
-                log.info("注册定时分发任务 Task({})-corn:{}", task.getUuid(), task.getCron());
+                log.debug("注册定时分发任务 Task({})-corn:{}", task.getUuid(), task.getCron());
                 scheduledThreadPool.schedule(() -> publish(task), CronParser.parse(task.getCron()), CronParser.TIME_UNIT);
+                final FutureTask futureTask = FutureTask.parse(task);
+                futureTaskService.save(futureTask);
+                workerIdMap.put("future", futureTask.getId().toString());
                 return workerIdMap;
-            } else {
-                log.info("分发定时任务 Task({})", task.getUuid());
+            } else { // remove schedule task in future_task table
+                futureTaskService.removeByTaskUUID(task);
+                log.debug("分发定时任务 Task({})", task.getUuid());
             }
         }
         if ("iterate".equals(task.getType())) {
@@ -95,18 +111,11 @@ public class RegisterApplication {
             final RpcClientProxy rpcClientProxy = nodeInstancePool.getRpcClientProxy()
                     .copy(new OnlineNodeServiceDiscovery(nodeInstancePool, new RoundRobinLoadBalancer()));
             for (int i = 0; i < size; ++i) {
-                final ConsumerService proxy = rpcClientProxy.getProxy(ConsumerService.class);
-                final String workerId = proxy.dispatchTask(task);
-                final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
-                workerIdMap.put(lastAddress.getHostString() + ':' + lastAddress.getPort(), workerId);
+                dispatchTask(task, rpcClientProxy, workerIdMap);
             }
         } else { // TYPE.DISPATCH
             final RpcClientProxy rpcClientProxy = nodeInstancePool.getRpcClientProxy();
-            final ConsumerService service = rpcClientProxy.getProxy(ConsumerService.class);
-            final String workerId = service.dispatchTask(task);
-            final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
-            String host = lastAddress.getHostString() + ':' + lastAddress.getPort();
-            workerIdMap.put(host, workerId);
+            dispatchTask(task, rpcClientProxy, workerIdMap);
         }
         return workerIdMap;
     }
@@ -123,6 +132,13 @@ public class RegisterApplication {
                 .status(TaskStatus.WAITING)
                 .startTime(LocalDateTime.now())
                 .build();
+    }
+
+    private void dispatchTask(Task task, RpcClientProxy rpcClientProxy, Map<String, String> workerIdMap) {
+        final ConsumerService proxy = rpcClientProxy.getProxy(ConsumerService.class);
+        final String workerId = proxy.dispatchTask(task);
+        final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
+        workerIdMap.put(lastAddress.getHostString() + ':' + lastAddress.getPort(), workerId);
     }
 
 }
