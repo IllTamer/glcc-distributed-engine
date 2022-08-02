@@ -1,14 +1,11 @@
 package dev.jianmu.engine.api.config;
 
 import dev.jianmu.engine.api.config.application.RegisterApplication;
-import dev.jianmu.engine.api.service.ConsumerService;
-import dev.jianmu.engine.api.service.impl.ConsumerServiceImpl;
 import dev.jianmu.engine.register.NodeInstancePool;
 import dev.jianmu.engine.register.OnlineNodeServiceDiscovery;
 import dev.jianmu.engine.register.WeightedMinLoadLoadBalancer;
 import dev.jianmu.engine.rpc.codec.CommonDecoder;
 import dev.jianmu.engine.rpc.codec.CommonEncoder;
-import dev.jianmu.engine.rpc.factory.SingletonFactory;
 import dev.jianmu.engine.rpc.serializer.CommonSerializer;
 import dev.jianmu.engine.rpc.service.loadbalancer.LoadBalancer;
 import dev.jianmu.engine.rpc.translate.NettyServerHandler;
@@ -72,6 +69,8 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
     }
 
     /**
+     * TODO 初始化时/定期检查 恢复 Table: future 中的未执行任务 （普通/定时）
+     *  考虑定时任务恢复时过期的情况
      * {@link ApplicationRunner}
      * */
     @Async
@@ -152,7 +151,6 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
         if (loadBalancer instanceof WeightedMinLoadLoadBalancer)
             ((WeightedMinLoadLoadBalancer) loadBalancer).setNodeInstancePool(nodeInstancePool);
 
-//        SingletonFactory.setInstance(ConsumerService.class, new ConsumerServiceImpl());
         registerApplication.refreshNodes();
     }
 
