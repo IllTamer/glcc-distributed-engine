@@ -3,7 +3,6 @@ package dev.jianmu.engine.api.config.application;
 import dev.jianmu.engine.api.config.ScheduledConfiguration;
 import dev.jianmu.engine.api.service.TaskService;
 import dev.jianmu.engine.consumer.TaskRunner;
-import dev.jianmu.engine.provider.ProviderInfo;
 import dev.jianmu.engine.provider.ShellWorker;
 import dev.jianmu.engine.provider.Task;
 import dev.jianmu.engine.provider.Worker;
@@ -63,7 +62,7 @@ public class ConsumerApplication {
      * 添加任务
      * priority + 批次处理思想
      * */
-    public ProviderInfo push(Task task) {
+    public String push(Task task) {
         lock.lock();
         if (runner == null || !runner.push(task)) {
             if (runner != null) {
@@ -77,10 +76,14 @@ public class ConsumerApplication {
             runner.push(task);
         }
         lock.unlock();
-        ProviderInfo info = new ProviderInfo();
-        info.setThreadPoolUsage(consumerThreadPool.getActiveCount() * 100 / MAX_CONSUMER_POOL_SIZE);
-        info.setWorkerId(runner.getWorker().getId());
-        return info;
+        return runner.getWorker().getId();
+    }
+
+    /**
+     * 获取线程池使用率
+     * */
+    public int getThreadPoolUsage() {
+        return consumerThreadPool.getActiveCount() * 100 / MAX_CONSUMER_POOL_SIZE;
     }
 
     @Bean("consumerThreadPool")

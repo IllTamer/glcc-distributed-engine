@@ -1,8 +1,7 @@
 package dev.jianmu.engine.api.service.impl;
 
 import dev.jianmu.engine.api.config.application.ConsumerApplication;
-import dev.jianmu.engine.api.service.ConsumerService;
-import dev.jianmu.engine.provider.ProviderInfo;
+import dev.jianmu.engine.consumer.ConsumerService;
 import dev.jianmu.engine.provider.Task;
 import dev.jianmu.engine.rpc.annotation.RpcService;
 import dev.jianmu.engine.rpc.factory.SingletonFactory;
@@ -13,11 +12,16 @@ public class ConsumerServiceImpl implements ConsumerService {
 
     @Override
     public String dispatchTask(Task task) {
-        ConsumerApplication consumerApplication =
-                SingletonFactory.getInstance(ApplicationContext.class).getBean(ConsumerApplication.class);
-        final ProviderInfo info = consumerApplication.push(task);
-        // TODO thread pool usage
-        return info.getWorkerId();
+        final ApplicationContext context = SingletonFactory.getInstance(ApplicationContext.class);
+        ConsumerApplication consumerApplication = context.getBean(ConsumerApplication.class);
+        return consumerApplication.push(task);
+    }
+
+    @Override
+    public int getTaskThreadPoolUsage() {
+        final ApplicationContext context = SingletonFactory.getInstance(ApplicationContext.class);
+        ConsumerApplication consumerApplication = context.getBean(ConsumerApplication.class);
+        return consumerApplication.getThreadPoolUsage();
     }
 
 }

@@ -1,4 +1,4 @@
-package dev.jianmu.engine.api.service;
+package dev.jianmu.engine.consumer;
 
 import dev.jianmu.engine.provider.Task;
 
@@ -11,5 +11,10 @@ public interface ConsumerService {
      * @return workerId
      * */
     String dispatchTask(Task task);
+
+    /**
+     * 获取节点 consumer 任务线程池使用率
+     * */
+    int getTaskThreadPoolUsage();
 
 }
