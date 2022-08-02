@@ -1,7 +1,7 @@
 package dev.jianmu.engine.register;
 
+import dev.jianmu.engine.consumer.ConsumerService;
 import dev.jianmu.engine.consumer.LocalStateService;
-import dev.jianmu.engine.consumer.LocalStateServiceImpl;
 import dev.jianmu.engine.monitor.event.ExecutionNode;
 import dev.jianmu.engine.monitor.event.filter.AvailabilityFilter;
 import dev.jianmu.engine.rpc.service.Discovery;
@@ -13,7 +13,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
@@ -118,9 +117,11 @@ public class NodeInstancePool {
     private static ExecutionNode refreshNode(ExecutionNode node, RpcClientProxy rpcClientProxy) {
         try {
             RpcClientProxy copyProxy = rpcClientProxy.copy(name -> node.getAddress());
-            LocalStateService service = copyProxy.getProxy(LocalStateService.class);
-            Map<String, Object> nodeInfo = service.info();
+            final LocalStateService localStateService = copyProxy.getProxy(LocalStateService.class);
+            Map<String, Object> nodeInfo = localStateService.info();
             node.setNodeInfo(nodeInfo);
+            final ConsumerService consumerService = copyProxy.getProxy(ConsumerService.class);
+            node.getNodeInfo().put("taskThreadPoolUsage", consumerService.getTaskThreadPoolUsage());
             node.setStatus(ExecutionNode.Status.AVAILABLE);
         } catch (Exception e) {
             node.setNodeInfo(Collections.EMPTY_MAP);
