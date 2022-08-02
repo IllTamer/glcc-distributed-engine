@@ -152,7 +152,7 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
         if (loadBalancer instanceof WeightedMinLoadLoadBalancer)
             ((WeightedMinLoadLoadBalancer) loadBalancer).setNodeInstancePool(nodeInstancePool);
 
-        SingletonFactory.setInstance(ConsumerService.class, new ConsumerServiceImpl());
+//        SingletonFactory.setInstance(ConsumerService.class, new ConsumerServiceImpl());
         registerApplication.refreshNodes();
     }
 

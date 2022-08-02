@@ -41,7 +41,6 @@ public class Task implements Comparable<Task>, Serializable {
     /**
      * 任务类型
      * <p>
-     * - local: 本地执行
      * - dispatch: 分布式调度(如果本机权重较高，也会分配给本机)
      * - iterate: 所有节点均执行
      * */

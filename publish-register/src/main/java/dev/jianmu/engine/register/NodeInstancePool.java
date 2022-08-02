@@ -83,6 +83,7 @@ public class NodeInstancePool {
                 .dataVersion(0L)
                 .nodeInfo(Collections.EMPTY_MAP)
                 .build();
+        this.tempExecutionNodes.add(localPersistentNode);
     }
 
     /**
@@ -111,13 +112,6 @@ public class NodeInstancePool {
         deprecatedNodes.addAll(deprecated);
         lock.unlock();
         return tempExecutionNodes;
-    }
-
-    /**
-     * 更新本地节点数据
-     * */
-    public void refreshLocalNode() {
-        this.localPersistentNode.setNodeInfo(new LocalStateServiceImpl().info());
     }
 
     @NotNull

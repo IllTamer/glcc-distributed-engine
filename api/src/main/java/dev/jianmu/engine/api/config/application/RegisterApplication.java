@@ -51,10 +51,12 @@ public class RegisterApplication {
         );
     }
 
+    /**
+     * refresh 所有节点状态
+     * */
     public void refreshNodes() {
-        nodeInstancePool.refreshLocalNode();
         final List<ExecutionNode> broadcast = nodeInstancePool.broadcast();
-        if (broadcast.size() == 0)
+        if (broadcast.size() == 1)
             log.debug("No available remote node");
     }
 
@@ -98,27 +100,12 @@ public class RegisterApplication {
                 final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
                 workerIdMap.put(lastAddress.getHostString() + ':' + lastAddress.getPort(), workerId);
             }
-        } else {
+        } else { // TYPE.DISPATCH
             final RpcClientProxy rpcClientProxy = nodeInstancePool.getRpcClientProxy();
-            ConsumerService service;
-            if ("local".equals(task.getType())) {
-                service = SingletonFactory.getInstance(ConsumerService.class);
-            } else { // TYPE.DISPATCH
-                service = rpcClientProxy.getProxy(ConsumerService.class);
-                // 判断本地节点权重 (自身也可执行任务/单机)
-                final WeightedMinLoadLoadBalancer loadBalancer = (WeightedMinLoadLoadBalancer)
-                        ((OnlineNodeServiceDiscovery) rpcClientProxy.getClient().getServiceDiscovery()).getLoadBalancer();
-                // 自身权重更大，转为本地执行
-                if (WeightedMinLoadLoadBalancer.getWeight(nodeInstancePool.getLocalPersistentNode()) >= loadBalancer.getLatestNodeLoad()) {
-                    service = SingletonFactory.getInstance(ConsumerService.class);
-                    task.setType("local");
-                }
-            }
+            final ConsumerService service = rpcClientProxy.getProxy(ConsumerService.class);
             final String workerId = service.dispatchTask(task);
             final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
-            String host = "local".equals(task.getType()) ?
-                    "localhost:" + nodeInstancePool.getLocalPersistentNode().getAddress().getPort() :
-                    lastAddress.getHostString() + ':' + lastAddress.getPort();
+            String host = lastAddress.getHostString() + ':' + lastAddress.getPort();
             workerIdMap.put(host, workerId);
         }
         return workerIdMap;
