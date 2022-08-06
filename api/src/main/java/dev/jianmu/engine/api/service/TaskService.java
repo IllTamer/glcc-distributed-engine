@@ -11,6 +11,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class TaskService extends ServiceImpl<TaskMapper, Task> {
 
@@ -21,6 +23,9 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         return getOne(wrapper);
     }
 
+    /**
+     * 刷新任务数据
+     * */
     @Transactional
     public boolean refreshTask(Task task) {
         LambdaUpdateWrapper<Task> wrapper = new LambdaUpdateWrapper<>();
@@ -30,6 +35,14 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
                 .set(Task::getWorkerId, task.getWorkerId())
                 .set(Task::getStatus, task.getStatus())
                 .set(Task::getEndTime, task.getEndTime())
+        ) > 0;
+    }
+
+    @Transactional
+    public boolean removeByUUID(Task task) {
+        LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<>();
+        return getBaseMapper().delete(wrapper
+                .eq(Task::getUuid, task.getUuid())
         ) > 0;
     }
 
@@ -61,4 +74,13 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         runner.run();
     }
 
+    @Transactional
+    public List<Task> queryAllTimeoutWaiting(long limitSeconds) {
+        long timeLimit = (System.currentTimeMillis() - limitSeconds * 1000L) * 1000L;
+        LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<>();
+        wrapper // <= 最迟开始时间即为超时
+                .le(Task::getStartTime, timeLimit)
+                .last("LIMIT 256");
+        return getBaseMapper().selectList(wrapper);
+    }
 }

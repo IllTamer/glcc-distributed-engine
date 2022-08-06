@@ -1,5 +1,7 @@
 package dev.jianmu.engine.api.config.application;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import dev.jianmu.engine.api.config.EngineProperties;
 import dev.jianmu.engine.api.dto.TaskDTO;
 import dev.jianmu.engine.api.service.FutureTaskService;
@@ -17,21 +19,25 @@ import dev.jianmu.engine.rpc.service.loadbalancer.RoundRobinLoadBalancer;
 import dev.jianmu.engine.rpc.translate.RpcClientProxy;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Getter
 @Component
 public class RegisterApplication {
+    public static final int LONGEST_EXECUTION_SECONDS = 15 * 60;
 
     private final TaskService taskService;
     private final FutureTaskService futureTaskService;
@@ -75,7 +81,7 @@ public class RegisterApplication {
     /**
      * 发布任务
      * @return
-     *  1. Key: hostName, Value: workerId
+     *  1. Key: host, Value: workerId
      *  2. Key: 'overload', Value: id (FutureTask)
      *  3. Key: 'future', Value: id (FutureTask)
      * */
@@ -120,6 +126,39 @@ public class RegisterApplication {
         return workerIdMap;
     }
 
+    /**
+     * 恢复未执行的任务
+     * */
+    public void recoverFutureAndFailureTasks() {
+        int maxPage = 64;
+        final int count = futureTaskService.count();
+        LambdaQueryWrapper<FutureTask> wrapper = new LambdaQueryWrapper<>();
+        for (int i = 1; i*maxPage < count; ++ i) {
+            Page<FutureTask> page = new Page<>(i, maxPage);
+            for (FutureTask futureTask : futureTaskService.page(page, wrapper).getRecords()) {
+                final Task task = Task.parse(futureTask);
+                final String cron = task.getCron();
+                // 移出记录表
+                futureTaskService.removeByTaskUUID(task);
+                if (cron == null) { // overload
+                    final Map<String, String> workerIdMap = publish(task);
+                    log.debug("Overload task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+                } else { // future
+                    // 删除 tryRecordInsert: 过期的移除 -> 发布普通任务; 未过期的移除 -> 重新发布定时任务
+                    taskService.removeByUUID(task);
+                    if (CronParser.timeout(cron, futureTask.getStartTime().toInstant(ZoneOffset.ofHours(8)).toEpochMilli())) {
+                        task.setCron(null);
+                        log.debug("Future task#{} timeout", task.getUuid());
+                     }
+                    final Map<String, String> workerIdMap = publish(task);
+                    log.info("Future task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+                }
+            }
+        }
+        // table_task 中余下的 WAITING 数据皆为未执行任务
+        recoverFailureTasks();
+    }
+
     public Task createTask(TaskDTO dto) {
         return Task.builder()
                 .uuid(UUID.randomUUID().toString())
@@ -134,7 +173,17 @@ public class RegisterApplication {
                 .build();
     }
 
-    private void dispatchTask(Task task, RpcClientProxy rpcClientProxy, Map<String, String> workerIdMap) {
+    @Scheduled(fixedRate = LONGEST_EXECUTION_SECONDS, initialDelay = 3 * 60, timeUnit = TimeUnit.SECONDS)
+    protected void recoverFailureTasks() {
+        List<Task> tasks = taskService.queryAllTimeoutWaiting(LONGEST_EXECUTION_SECONDS);
+        for (Task task : tasks) { // failure
+            log.info("Failure invoke task({}) restart", task);
+            final Map<String, String> workerIdMap = publish(task);
+            log.info("Failure task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+        }
+    }
+
+    private static void dispatchTask(Task task, RpcClientProxy rpcClientProxy, Map<String, String> workerIdMap) {
         final ConsumerService proxy = rpcClientProxy.getProxy(ConsumerService.class);
         final String workerId = proxy.dispatchTask(task);
         final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
