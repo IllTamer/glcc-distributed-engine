@@ -69,6 +69,8 @@ public class Task implements Comparable<Task>, Serializable {
 
     /**
      * 执行的指令列表
+     * <p>
+     * default to null
      * */
     private String script;
 
@@ -86,6 +88,8 @@ public class Task implements Comparable<Task>, Serializable {
 
     /**
      * 结束时间
+     * <p>
+     * default to null
      * */
     @Setter
     @TableField("end_time")
@@ -94,6 +98,20 @@ public class Task implements Comparable<Task>, Serializable {
     @Override
     public int compareTo(@NotNull Task o) {
         return o.priority.compareTo(this.priority);
+    }
+
+    public static Task parse(FutureTask futureTask) {
+        return builder()
+                .id(futureTask.getId())
+                .uuid(futureTask.getUuid())
+                .transactionId(futureTask.getTransactionId())
+                .type(futureTask.getType())
+                .priority(futureTask.getPriority())
+                .cron(futureTask.getCron())
+                .script(futureTask.getScript())
+                .status(TaskStatus.WAITING)
+                .startTime(futureTask.getStartTime())
+                .build();
     }
 
 }
