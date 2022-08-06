@@ -10,12 +10,13 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
  * 计划任务
  * <p>
  * 包含 定时任务 与 过载任务
- * @apiNote 任务运行状态统一为 WAITING，并重置开始时间
+ * @apiNote 任务运行状态统一为 WAITING
  * */
 @Builder
 @Getter
@@ -65,14 +66,21 @@ public class FutureTask implements Serializable {
      * */
     private String script;
 
+    /**
+     * 开始时间
+     * */
+    @TableField("start_time")
+    private LocalDateTime startTime;
+
     public static FutureTask parse(Task task) {
-        return FutureTask.builder()
+        return builder()
                 .uuid(task.getUuid())
                 .transactionId(task.getTransactionId())
                 .type(task.getType())
                 .priority(task.getPriority())
                 .cron(task.getCron())
                 .script(task.getScript())
+                .startTime(task.getStartTime())
                 .build();
     }
 }

@@ -51,4 +51,11 @@ public class CronParser {
         return total;
     }
 
+    /**
+     * @return 是否超时
+     * */
+    public static boolean timeout(String cron, long limitTime) {
+        return limitTime <= parse(cron) * 1000L + System.currentTimeMillis();
+    }
+
 }
