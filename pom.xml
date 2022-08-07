@@ -7,7 +7,7 @@
     <groupId>dev.jianmu.engine</groupId>
     <artifactId>main</artifactId>
     <packaging>pom</packaging>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <modules>
         <module>api</module>
         <module>publish-register</module>
