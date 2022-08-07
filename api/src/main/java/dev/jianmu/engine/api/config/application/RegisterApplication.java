@@ -25,10 +25,7 @@ import org.springframework.stereotype.Component;
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -133,30 +130,43 @@ public class RegisterApplication {
         int maxPage = 64;
         final int count = futureTaskService.count();
         LambdaQueryWrapper<FutureTask> wrapper = new LambdaQueryWrapper<>();
+        List<FutureTask> failedFutureTasks = new ArrayList<>();
         for (int i = 1; i*maxPage < count; ++ i) {
             Page<FutureTask> page = new Page<>(i, maxPage);
             for (FutureTask futureTask : futureTaskService.page(page, wrapper).getRecords()) {
                 final Task task = Task.parse(futureTask);
-                final String cron = task.getCron();
-                // 移出记录表
-                futureTaskService.removeByTaskUUID(task);
-                if (cron == null) { // overload
-                    final Map<String, String> workerIdMap = publish(task);
-                    log.debug("Overload task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
-                } else { // future
-                    // 删除 tryRecordInsert: 过期的移除 -> 发布普通任务; 未过期的移除 -> 重新发布定时任务
-                    taskService.removeByUUID(task);
-                    if (CronParser.timeout(cron, futureTask.getStartTime().toInstant(ZoneOffset.ofHours(8)).toEpochMilli())) {
-                        task.setCron(null);
-                        log.debug("Future task#{} timeout", task.getUuid());
-                     }
-                    final Map<String, String> workerIdMap = publish(task);
-                    log.info("Future task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+                try {
+                    final String cron = task.getCron();
+                    // 移出记录表
+                    futureTaskService.removeByTaskUUID(task);
+                    if (cron == null) { // overload
+                        final Map<String, String> workerIdMap = publish(task);
+                        log.debug("Overload task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+                    } else { // future
+                        // 删除 tryRecordInsert: 过期的移除 -> 发布普通任务; 未过期的移除 -> 重新发布定时任务
+                        taskService.removeByUUID(task);
+                        if (CronParser.timeout(cron, futureTask.getStartTime().toInstant(ZoneOffset.ofHours(8)).toEpochMilli())) {
+                            task.setCron(null);
+                            log.debug("Future task#{} timeout", task.getUuid());
+                        }
+                        final Map<String, String> workerIdMap = publish(task);
+                        log.info("Future task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+                    }
+                } catch (Exception e) {
+                    failedFutureTasks.add(futureTask);
+                    log.warn("Some error occurred when publish future task#{}, try reinsert to future_table later", task.getUuid());
                 }
             }
         }
         // table_task 中余下的 WAITING 数据皆为未执行任务
         recoverFailureTasks();
+        // reinsert failure future tasks into future_table
+        if (failedFutureTasks.size() == 0) return;
+        try {
+            futureTaskService.saveBatch(failedFutureTasks);
+        } catch (Exception e) {
+            log.warn("Unknown exception in reinserting failure future tasks", e);
+        }
     }
 
     public Task createTask(TaskDTO dto) {
@@ -177,9 +187,13 @@ public class RegisterApplication {
     protected void recoverFailureTasks() {
         List<Task> tasks = taskService.queryAllTimeoutWaiting(LONGEST_EXECUTION_SECONDS);
         for (Task task : tasks) { // failure
-            log.info("Failure invoke task({}) restart", task);
-            final Map<String, String> workerIdMap = publish(task);
-            log.info("Failure task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+            try {
+                log.info("Failure invoke task({}) restart", task);
+                final Map<String, String> workerIdMap = publish(task);
+                log.info("Failure task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+            } catch (Exception e) {
+                log.warn("Some error occurred when publish task#{}", task.getUuid());
+            }
         }
     }
 
