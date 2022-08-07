@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
+import java.rmi.RemoteException;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,7 +36,7 @@ public class ChannelProvider {
     private static EventLoopGroup worker;
 
     @NotNull
-    public static Channel get(InetSocketAddress address, CommonSerializer serializer) {
+    public static Channel get(InetSocketAddress address, CommonSerializer serializer) throws RpcException {
         String key = address.toString() + serializer.getCode();
         if (channels.containsKey(key)) {
             Channel channel = channels.get(key);
@@ -78,7 +79,7 @@ public class ChannelProvider {
                 log.debug("客户端连接成功！");
                 completableFuture.complete(future.channel());
             } else {
-                throw new IllegalStateException(address.toString());
+                completableFuture.completeExceptionally(new InterruptedException("客户端地址(" + address + ")连接失败"));
             }
         });
         return completableFuture.get();
