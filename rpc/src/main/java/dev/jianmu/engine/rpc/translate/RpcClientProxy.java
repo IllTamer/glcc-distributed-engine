@@ -1,5 +1,6 @@
 package dev.jianmu.engine.rpc.translate;
 
+import dev.jianmu.engine.rpc.exception.RpcException;
 import dev.jianmu.engine.rpc.service.ServiceDiscovery;
 import dev.jianmu.engine.rpc.translate.client.NettyClient;
 import dev.jianmu.engine.rpc.util.Assert;
@@ -62,7 +63,7 @@ public class RpcClientProxy implements InvocationHandler {
             CompletableFuture<RpcResponse<?>> completableFuture = client.sendRequest(rpcRequest);
             rpcResponse = completableFuture.get();
             Assert.notNull(rpcResponse.getData(), "Unexpect null pointer");
-        } catch (InterruptedException | ExecutionException | IllegalStateException e) {
+        } catch (InterruptedException | ExecutionException | IllegalStateException | RpcException e) {
             log.error("方法调用请求失败", e);
             return null;
         }

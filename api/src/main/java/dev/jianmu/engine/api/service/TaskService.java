@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import dev.jianmu.engine.api.mapper.TaskMapper;
 import dev.jianmu.engine.consumer.TaskRunner;
 import dev.jianmu.engine.provider.Task;
+import dev.jianmu.engine.provider.TaskStatus;
 import dev.jianmu.engine.rpc.util.Assert;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -57,7 +58,7 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         final Task exist = getBaseMapper().selectOne(wrapper
                 .eq(Task::getTransactionId, task.getTransactionId())
         );
-        Assert.isNull(exist, "Transaction-Id in Task(%s) has been used, please request another", exist);
+        Assert.isNull(exist, "Transaction-Id in %s has been used, please request another", exist);
         return this.save(task);
     }
 
@@ -79,6 +80,7 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         long timeLimit = (System.currentTimeMillis() - limitSeconds * 1000L) * 1000L;
         LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<>();
         wrapper // <= 最迟开始时间即为超时
+                .eq(Task::getStatus, TaskStatus.WAITING)
                 .le(Task::getStartTime, timeLimit)
                 .last("LIMIT 256");
         return getBaseMapper().selectList(wrapper);

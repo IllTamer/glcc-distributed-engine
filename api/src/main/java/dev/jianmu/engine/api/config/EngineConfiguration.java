@@ -109,6 +109,7 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
             future.addListener((ChannelFutureListener) listener -> log.info("RPC-Server启动，在(port): {}", port));
             // After server init
             initEngineComponents(properties, context);
+            log.info("组件初始化完成，服务已开启");
             serverChannel.closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
