@@ -4,8 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import dev.jianmu.engine.api.config.EngineProperties;
 import dev.jianmu.engine.api.dto.TaskDTO;
+import dev.jianmu.engine.api.pojo.EngineLock;
 import dev.jianmu.engine.api.service.FutureTaskService;
+import dev.jianmu.engine.api.service.PessimisticLockService;
 import dev.jianmu.engine.api.service.TaskService;
+import dev.jianmu.engine.api.vo.TaskPublishVO;
 import dev.jianmu.engine.consumer.ConsumerService;
 import dev.jianmu.engine.monitor.event.ExecutionNode;
 import dev.jianmu.engine.provider.FutureTask;
@@ -17,8 +20,10 @@ import dev.jianmu.engine.register.OnlineNodeServiceDiscovery;
 import dev.jianmu.engine.register.util.CronParser;
 import dev.jianmu.engine.rpc.service.loadbalancer.RoundRobinLoadBalancer;
 import dev.jianmu.engine.rpc.translate.RpcClientProxy;
+import dev.jianmu.engine.rpc.util.Assert;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -35,18 +40,22 @@ import java.util.concurrent.atomic.AtomicLong;
 @Component
 public class RegisterApplication {
     public static final int LONGEST_EXECUTION_SECONDS = 15 * 60;
+    public static final String SUBMIT_BUSINESS_CODE = "submit";
 
+    private final PessimisticLockService pessimisticLockService;
     private final TaskService taskService;
     private final FutureTaskService futureTaskService;
     private final ScheduledExecutorService scheduledThreadPool;
     private final NodeInstancePool nodeInstancePool;
 
     public RegisterApplication(
+            PessimisticLockService pessimisticLockService,
             TaskService taskService,
             FutureTaskService futureTaskService,
             ScheduledExecutorService scheduledThreadPool,
             EngineProperties properties
     ) {
+        this.pessimisticLockService = pessimisticLockService;
         this.taskService = taskService;
         this.futureTaskService = futureTaskService;
         this.scheduledThreadPool = scheduledThreadPool;
@@ -55,6 +64,34 @@ public class RegisterApplication {
                 properties.getService().getRegisterPort(),
                 properties.getAvailabilityFilter()
         );
+    }
+
+    @NotNull
+    public TaskPublishVO doSubmitTask(Task task) {
+        // 更新Node状态(CPU使用率，内存使用率等)
+        refreshNodes();
+        Map<String, String> workerIdMap = null;
+        EngineLock lock = null;
+        try {
+            // 分布式锁，入锁(拒绝新增)
+            lock = pessimisticLockService.tryLock(SUBMIT_BUSINESS_CODE);
+            workerIdMap = publish(task);
+            final boolean unlock = pessimisticLockService.unlock(lock);
+            Assert.isTrue(unlock, "Unlock failed: Lock(%s)", lock);
+            lock = null;
+        } catch (InterruptedException e) {
+            log.warn("Failed to request lock: {}", SUBMIT_BUSINESS_CODE);
+        } catch (Exception e) {
+            log.warn("Something happened when publish Task({})", task, e);
+        } finally {
+            // 分布式锁，出锁(允许新增)
+            if (lock != null)
+                pessimisticLockService.unlock(lock);
+        }
+        return TaskPublishVO.builder()
+                .uuid(task.getUuid())
+                .workerIdMap(workerIdMap)
+                .build();
     }
 
     /**
@@ -67,21 +104,13 @@ public class RegisterApplication {
     }
 
     /**
-     * 获取下一个全局事务Id
-     * */
-    public Long getNextTransactionId() {
-        final AtomicLong globalTransactionId = nodeInstancePool.getGlobalTransactionId();
-        globalTransactionId.set(taskService.getNextTransactionId());
-        return globalTransactionId.incrementAndGet();
-    }
-
-    /**
      * 发布任务
      * @return
      *  1. Key: host, Value: workerId
      *  2. Key: 'overload', Value: id (FutureTask)
      *  3. Key: 'future', Value: id (FutureTask)
      * */
+    @NotNull
     public Map<String, String> publish(Task task) {
         Map<String, String> workerIdMap = new HashMap<>();
         if (nodeInstancePool.getTempExecutionNodes().size() == 0) {
@@ -181,6 +210,15 @@ public class RegisterApplication {
                 .status(TaskStatus.WAITING)
                 .startTime(LocalDateTime.now())
                 .build();
+    }
+
+    /**
+     * 获取下一个全局事务Id
+     * */
+    public Long getNextTransactionId() {
+        final AtomicLong globalTransactionId = nodeInstancePool.getGlobalTransactionId();
+        globalTransactionId.set(taskService.getNextTransactionId());
+        return globalTransactionId.incrementAndGet();
     }
 
     @Scheduled(fixedRate = LONGEST_EXECUTION_SECONDS, initialDelay = 3 * 60, timeUnit = TimeUnit.SECONDS)

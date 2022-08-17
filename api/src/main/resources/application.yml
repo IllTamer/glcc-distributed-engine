@@ -1,16 +1,16 @@
 server:
-  port: 81
+  port: 80
 
 jianmu:
   engine:
     debug: true
     service:
-      register-port: 8848
+      register-port: 2333
       map:
         'dev.jianmu.engine.consumer.LocalStateService': dev.jianmu.engine.consumer.LocalStateServiceImpl
       discoveries:
       - host: localhost
-        port: 2333
+        port: 8848
 
 spring:
   datasource:
@@ -25,4 +25,6 @@ spring:
 logging:
   level:
     dev.jianmu.engine: debug
-
+    dev.jianmu.engine.rpc.codec.CommonDecoder: info
+    dev.jianmu.engine.rpc.translate.NettyClientHandler: info
+    dev.jianmu.engine.rpc.translate.NettyServerHandler: info
