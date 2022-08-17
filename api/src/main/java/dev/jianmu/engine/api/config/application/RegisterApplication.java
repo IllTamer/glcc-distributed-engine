@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import dev.jianmu.engine.api.config.EngineProperties;
 import dev.jianmu.engine.api.dto.TaskDTO;
+import dev.jianmu.engine.api.exception.PublishException;
 import dev.jianmu.engine.api.pojo.EngineLock;
 import dev.jianmu.engine.api.service.FutureTaskService;
 import dev.jianmu.engine.api.service.PessimisticLockService;
@@ -66,8 +67,11 @@ public class RegisterApplication {
         );
     }
 
+    /**
+     * 提交任务
+     * */
     @NotNull
-    public TaskPublishVO doSubmitTask(Task task) {
+    public TaskPublishVO submitTask(Task task) {
         // 更新Node状态(CPU使用率，内存使用率等)
         refreshNodes();
         Map<String, String> workerIdMap = null;
@@ -81,8 +85,6 @@ public class RegisterApplication {
             lock = null;
         } catch (InterruptedException e) {
             log.warn("Failed to request lock: {}", SUBMIT_BUSINESS_CODE);
-        } catch (Exception e) {
-            log.warn("Something happened when publish Task({})", task, e);
         } finally {
             // 分布式锁，出锁(允许新增)
             if (lock != null)
@@ -92,64 +94,6 @@ public class RegisterApplication {
                 .uuid(task.getUuid())
                 .workerIdMap(workerIdMap)
                 .build();
-    }
-
-    /**
-     * refresh 所有节点状态
-     * */
-    public void refreshNodes() {
-        final List<ExecutionNode> broadcast = nodeInstancePool.broadcast();
-        if (broadcast.size() == 1)
-            log.debug("No available remote node");
-    }
-
-    /**
-     * 发布任务
-     * @return
-     *  1. Key: host, Value: workerId
-     *  2. Key: 'overload', Value: id (FutureTask)
-     *  3. Key: 'future', Value: id (FutureTask)
-     * */
-    @NotNull
-    public Map<String, String> publish(Task task) {
-        Map<String, String> workerIdMap = new HashMap<>();
-        if (nodeInstancePool.getTempExecutionNodes().size() == 0) {
-            final FutureTask futureTask = FutureTask.parse(task);
-            // 储存因所有节点不可用而阻塞的任务
-            futureTaskService.save(futureTask);
-            workerIdMap.put("overload", futureTask.getId().toString());
-            return workerIdMap;
-        }
-        // 校验有无重复 transactionId, 预先插入一次
-        final boolean tryRecordInsert = taskService.tryRecordInsert(task);
-        // 定时分发检测
-        if (task.getCron() == null && !tryRecordInsert) return workerIdMap;
-        if (task.getCron() != null) {
-            if (tryRecordInsert) {
-                log.debug("注册定时分发任务 Task({})-corn:{}", task.getUuid(), task.getCron());
-                scheduledThreadPool.schedule(() -> publish(task), CronParser.parse(task.getCron()), CronParser.TIME_UNIT);
-                final FutureTask futureTask = FutureTask.parse(task);
-                futureTaskService.save(futureTask);
-                workerIdMap.put("future", futureTask.getId().toString());
-                return workerIdMap;
-            } else { // remove schedule task in future_task table
-                futureTaskService.removeByTaskUUID(task);
-                log.debug("分发定时任务 Task({})", task.getUuid());
-            }
-        }
-        if ("iterate".equals(task.getType())) {
-            // 创建轮询代理
-            final int size = nodeInstancePool.getTempExecutionNodes().size();
-            final RpcClientProxy rpcClientProxy = nodeInstancePool.getRpcClientProxy()
-                    .copy(new OnlineNodeServiceDiscovery(nodeInstancePool, new RoundRobinLoadBalancer()));
-            for (int i = 0; i < size; ++i) {
-                dispatchTask(task, rpcClientProxy, workerIdMap);
-            }
-        } else { // TYPE.DISPATCH
-            final RpcClientProxy rpcClientProxy = nodeInstancePool.getRpcClientProxy();
-            dispatchTask(task, rpcClientProxy, workerIdMap);
-        }
-        return workerIdMap;
     }
 
     /**
@@ -213,12 +157,100 @@ public class RegisterApplication {
     }
 
     /**
+     * refresh 所有节点状态
+     * */
+    public void refreshNodes() {
+        final List<ExecutionNode> broadcast = nodeInstancePool.broadcast();
+        if (broadcast.size() == 1)
+            log.debug("No available remote node");
+    }
+
+    /**
      * 获取下一个全局事务Id
      * */
     public Long getNextTransactionId() {
         final AtomicLong globalTransactionId = nodeInstancePool.getGlobalTransactionId();
         globalTransactionId.set(taskService.getNextTransactionId());
         return globalTransactionId.incrementAndGet();
+    }
+
+    /**
+     * 发布任务
+     * @return
+     *  1. Key: host, Value: workerId
+     *  2. Key: 'overload', Value: id (FutureTask)
+     *  3. Key: 'future', Value: id (FutureTask)
+     * */
+    @NotNull
+    protected Map<String, String> publish(Task task) throws PublishException {
+        if (nodeInstancePool.isAllOverload()) {
+            return doPublishOverload(task);
+        }
+        // 预先插入一次，校验有无重复 transactionId
+        final boolean noRepeatId = taskService.tryRecordInsert(task);
+        if (task.getCron() == null && !noRepeatId)
+            throw new PublishException("重复的 transactionId");
+        // 定时分发检测
+        if (task.getCron() != null) {
+            if (noRepeatId) {
+                return doPublishFuture(task);
+            }
+            log.debug("分发定时任务 Task({})", task.getUuid());
+            // remove schedule task in future_task table
+            futureTaskService.removeByTaskUUID(task);
+        }
+        if ("iterate".equalsIgnoreCase(task.getType())) {
+            return doPublishIterate(task);
+        } else { // TYPE.DISPATCH
+            final RpcClientProxy rpcClientProxy = nodeInstancePool.getRpcClientProxy();
+            return doPublishDispatch(task, rpcClientProxy);
+        }
+    }
+
+    /**
+     * 处理超负荷任务
+     * */
+    protected Map<String, String> doPublishOverload(Task task) {
+        final FutureTask futureTask = FutureTask.parse(task);
+        // 储存因所有节点不可用而阻塞的任务
+        futureTaskService.save(futureTask);
+        return Collections.singletonMap("overload", futureTask.getId().toString());
+    }
+
+    /**
+     * 处理定时任务
+     * */
+    protected Map<String, String> doPublishFuture(Task task) {
+        log.debug("注册定时分发任务 Task({})-corn:{}", task.getUuid(), task.getCron());
+        scheduledThreadPool.schedule(() -> publish(task), CronParser.parse(task.getCron()), CronParser.TIME_UNIT);
+        final FutureTask futureTask = FutureTask.parse(task);
+        futureTaskService.save(futureTask);
+        return Collections.singletonMap("future", futureTask.getId().toString());
+    }
+
+    /**
+     * 处理迭代任务
+     * */
+    protected Map<String, String> doPublishIterate(Task task) {
+        Map<String, String> workerIdMap = new HashMap<>();
+        // 创建轮询代理
+        final RpcClientProxy rpcClientProxy = nodeInstancePool.getRpcClientProxy()
+                .copy(new OnlineNodeServiceDiscovery(nodeInstancePool, new RoundRobinLoadBalancer()));
+        final int size = nodeInstancePool.getTempExecutionNodes().size();
+        for (int i = 0; i < size; ++i) {
+            workerIdMap.putAll(doPublishDispatch(task, rpcClientProxy));
+        }
+        return workerIdMap;
+    }
+
+    /**
+     * 处理调度任务
+     * */
+    protected Map<String, String> doPublishDispatch(Task task, RpcClientProxy rpcClientProxy) {
+        final ConsumerService proxy = rpcClientProxy.getProxy(ConsumerService.class);
+        final String workerId = proxy.dispatchTask(task);
+        final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
+        return Collections.singletonMap(lastAddress.getHostString() + ':' + lastAddress.getPort(), workerId);
     }
 
     @Scheduled(fixedRate = LONGEST_EXECUTION_SECONDS, initialDelay = 3 * 60, timeUnit = TimeUnit.SECONDS)
@@ -233,13 +265,6 @@ public class RegisterApplication {
                 log.warn("Some error occurred when publish task#{}", task.getUuid());
             }
         }
-    }
-
-    private static void dispatchTask(Task task, RpcClientProxy rpcClientProxy, Map<String, String> workerIdMap) {
-        final ConsumerService proxy = rpcClientProxy.getProxy(ConsumerService.class);
-        final String workerId = proxy.dispatchTask(task);
-        final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
-        workerIdMap.put(lastAddress.getHostString() + ':' + lastAddress.getPort(), workerId);
     }
 
 }

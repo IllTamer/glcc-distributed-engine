@@ -113,6 +113,13 @@ public class NodeInstancePool {
         return tempExecutionNodes;
     }
 
+    /**
+     * 查询是否所有节点达到负荷上限
+     * */
+    public boolean isAllOverload() {
+        return tempExecutionNodes.size() == 0;
+    }
+
     @NotNull
     private static ExecutionNode refreshNode(ExecutionNode node, RpcClientProxy rpcClientProxy) {
         try {

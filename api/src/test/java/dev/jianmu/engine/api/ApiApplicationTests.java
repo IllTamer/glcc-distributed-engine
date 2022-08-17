@@ -11,13 +11,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 class ApiApplicationTests {
 
     @Autowired
-    private RegisterApplication registerApplication;
-
-    @Autowired
     private TaskService taskService;
 
     @Test
     void invoke() throws Exception {
+        System.out.println(taskService.queryAllTimeoutWaiting(RegisterApplication.LONGEST_EXECUTION_SECONDS));
     }
 
     public static void main(String[] args) {

@@ -34,7 +34,7 @@ public class MonitorApplication {
         final Task task = taskService.queryByUUID(uuid);
         Assert.isTrue(task.getStatus() == TaskStatus.PAUSE, "Wrong task status: {}", task.getStatus());
         task.setStatus(TaskStatus.WAITING);
-        return registerApplication.doSubmitTask(task);
+        return registerApplication.submitTask(task);
     }
 
     public TaskProcessVO checkProgress(String uuid) {
