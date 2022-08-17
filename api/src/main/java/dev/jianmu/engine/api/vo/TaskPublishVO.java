@@ -12,8 +12,16 @@ import java.util.Map;
 @Builder
 public class TaskPublishVO {
 
+    /**
+     * 任务的uuid
+     * */
     private String uuid;
 
+    /**
+     * 注册节点的信息
+     *     Key: hostName,
+     *     Value: workerId
+     * */
     private Map<String, String> workerIdMap;
 
 }

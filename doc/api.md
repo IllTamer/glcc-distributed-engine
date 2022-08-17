@@ -4,6 +4,22 @@
 
 基于[[分布式任务引擎架构设计]](../README.md)，本服务设有 `register` 与 `monitor` 层 web-api 接口。接口层应用 Restful 风格。
 
+为方便前端调用，接口返回值统一封装为 Ajax 风格的 json 数据，其格式如下：[实体类](../api/src/main/java/dev/jianmu/engine/api/pojo/AjaxResult.java)
+
+|  name  |  value  |  comment  |
+|  :----:  |  :----:  |  :----:  |
+| status  |  0 / 301 / 500  |  状态码 - 0成功；301警告；500错误 |
+| msg  |  "操作成功"  |  返回消息 - 失败时为错误信息  |
+| data  |  json  |  返回数据 - 具体看各接口返回值  |
+
+```json
+{
+  "status": 0,
+  "msg": "",
+  "data": {}
+}
+```
+
 ### register
 
 register 层的根路径为 `/task/register`，其主要用于服务的提交注册。该层设有两个开放的接口

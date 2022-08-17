@@ -1,8 +1,7 @@
 package dev.jianmu.engine.api.controller;
 
 import dev.jianmu.engine.api.config.application.MonitorApplication;
-import dev.jianmu.engine.api.vo.TaskProcessVO;
-import dev.jianmu.engine.api.vo.TaskPublishVO;
+import dev.jianmu.engine.api.pojo.AjaxResult;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,28 +23,30 @@ public class MonitorController {
      * */
     @NotNull
     @PutMapping("/pause/{uuid}")
-    public Boolean pauseTask(@PathVariable String uuid) {
-        return monitorApplication.pauseTask(uuid);
+    public AjaxResult pauseTask(@PathVariable String uuid) {
+        return AjaxResult.success(monitorApplication.pauseTask(uuid));
     }
 
     /**
      * 恢复暂停任务
      * <p>
      * 恢复并重新发布暂停的任务
+     * @param uuid 任务的uuid
      * */
     @NotNull
     @PutMapping("/continue/{uuid}")
-    public TaskPublishVO continueTask(@PathVariable String uuid) {
-        return monitorApplication.continueTask(uuid);
+    public AjaxResult continueTask(@PathVariable String uuid) {
+        return AjaxResult.success(monitorApplication.continueTask(uuid));
     }
 
     /**
      * 查询任务调度过程
+     * @param uuid 任务的uuid
      * */
     @NotNull
     @GetMapping("/{uuid}")
-    public TaskProcessVO checkProgress(@PathVariable String uuid) {
-        return monitorApplication.checkProgress(uuid);
+    public AjaxResult checkProgress(@PathVariable String uuid) {
+        return AjaxResult.success(monitorApplication.checkProgress(uuid));
     }
 
 }
