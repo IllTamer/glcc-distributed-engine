@@ -1,10 +1,15 @@
 package dev.jianmu.engine.api.dto;
 
 import dev.jianmu.engine.monitor.event.ExecutionNode;
+import dev.jianmu.engine.provider.Task;
+import dev.jianmu.engine.provider.TaskStatus;
+import dev.jianmu.engine.provider.Worker;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 任务 DTO
@@ -41,5 +46,19 @@ public class TaskDTO {
 
     // 命令列表
     private List<String> script;
+
+    public Task format() {
+        return Task.builder()
+                .uuid(UUID.randomUUID().toString())
+                .transactionId(transactionId)
+                .cron(cron)
+                .type(type)
+                .priority(priority)
+                // default to shell_worker
+                .script(Worker.WORKER_MAP.get(Worker.Type.SHELL).parseScript(script))
+                .status(TaskStatus.WAITING)
+                .startTime(LocalDateTime.now())
+                .build();
+    }
 
 }

@@ -26,7 +26,7 @@ public class RegisterController {
     @NotNull
     @PostMapping
     public AjaxResult createTask(@RequestBody TaskDTO taskDTO) {
-        Task task = registerApplication.createTask(taskDTO);
+        Task task = taskDTO.format();
         return AjaxResult.success(registerApplication.submitTask(task));
     }
 

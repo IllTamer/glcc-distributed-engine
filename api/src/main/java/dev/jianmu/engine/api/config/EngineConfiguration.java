@@ -153,7 +153,7 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
             ((WeightedMinLoadLoadBalancer) loadBalancer).setNodeInstancePool(nodeInstancePool);
 
         registerApplication.refreshNodes();
-        registerApplication.recoverFutureAndFailureTasks();
+        registerApplication.recoverFutureAndTimeoutTasks();
     }
 
 }

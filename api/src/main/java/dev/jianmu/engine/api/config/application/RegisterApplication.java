@@ -3,7 +3,6 @@ package dev.jianmu.engine.api.config.application;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import dev.jianmu.engine.api.config.EngineProperties;
-import dev.jianmu.engine.api.dto.TaskDTO;
 import dev.jianmu.engine.api.exception.PublishException;
 import dev.jianmu.engine.api.pojo.EngineLock;
 import dev.jianmu.engine.api.service.FutureTaskService;
@@ -14,8 +13,6 @@ import dev.jianmu.engine.consumer.ConsumerService;
 import dev.jianmu.engine.monitor.event.ExecutionNode;
 import dev.jianmu.engine.provider.FutureTask;
 import dev.jianmu.engine.provider.Task;
-import dev.jianmu.engine.provider.TaskStatus;
-import dev.jianmu.engine.provider.Worker;
 import dev.jianmu.engine.register.NodeInstancePool;
 import dev.jianmu.engine.register.OnlineNodeServiceDiscovery;
 import dev.jianmu.engine.register.util.CronParser;
@@ -29,7 +26,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.net.InetSocketAddress;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
@@ -42,6 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class RegisterApplication {
     public static final int LONGEST_EXECUTION_SECONDS = 15 * 60;
     public static final String SUBMIT_BUSINESS_CODE = "submit";
+    public static final int MAX_RECOVER_PAGE = 64;
 
     private final PessimisticLockService pessimisticLockService;
     private final TaskService taskService;
@@ -99,40 +96,19 @@ public class RegisterApplication {
     /**
      * 恢复未执行的任务
      * */
-    public void recoverFutureAndFailureTasks() {
-        int maxPage = 64;
+    public void recoverFutureAndTimeoutTasks() {
         final int count = futureTaskService.count();
-        LambdaQueryWrapper<FutureTask> wrapper = new LambdaQueryWrapper<>();
-        List<FutureTask> failedFutureTasks = new ArrayList<>();
-        for (int i = 1; i*maxPage < count; ++ i) {
-            Page<FutureTask> page = new Page<>(i, maxPage);
-            for (FutureTask futureTask : futureTaskService.page(page, wrapper).getRecords()) {
-                final Task task = Task.parse(futureTask);
-                try {
-                    final String cron = task.getCron();
-                    // 移出记录表
-                    futureTaskService.removeByTaskUUID(task);
-                    if (cron == null) { // overload
-                        final Map<String, String> workerIdMap = publish(task);
-                        log.debug("Overload task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
-                    } else { // future
-                        // 删除 tryRecordInsert: 过期的移除 -> 发布普通任务; 未过期的移除 -> 重新发布定时任务
-                        taskService.removeByUUID(task);
-                        if (CronParser.timeout(cron, futureTask.getStartTime().toInstant(ZoneOffset.ofHours(8)).toEpochMilli())) {
-                            task.setCron(null);
-                            log.debug("Future task#{} timeout", task.getUuid());
-                        }
-                        final Map<String, String> workerIdMap = publish(task);
-                        log.info("Future task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
-                    }
-                } catch (Exception e) {
-                    failedFutureTasks.add(futureTask);
-                    log.warn("Some error occurred when publish future task#{}, try reinsert to future_table later", task.getUuid());
-                }
-            }
+        if (count == 0) return;
+        int totalPage = (count / MAX_RECOVER_PAGE) + (count % MAX_RECOVER_PAGE) == 0 ? 0 : 1;
+        final List<FutureTask> failedFutureTasks = new ArrayList<>();
+        final LambdaQueryWrapper<FutureTask> wrapper = new LambdaQueryWrapper<>();
+        for (int i = 0; i < totalPage; ++ i) {
+            Page<FutureTask> page = new Page<>(i, MAX_RECOVER_PAGE);
+            List<FutureTask> records = futureTaskService.page(page, wrapper).getRecords();
+            failedFutureTasks.addAll(recoverFutureTasks(records));
         }
         // table_task 中余下的 WAITING 数据皆为未执行任务
-        recoverFailureTasks();
+        recoverTimeoutTasks();
         // reinsert failure future tasks into future_table
         if (failedFutureTasks.size() == 0) return;
         try {
@@ -140,20 +116,6 @@ public class RegisterApplication {
         } catch (Exception e) {
             log.warn("Unknown exception in reinserting failure future tasks", e);
         }
-    }
-
-    public Task createTask(TaskDTO dto) {
-        return Task.builder()
-                .uuid(UUID.randomUUID().toString())
-                .transactionId(dto.getTransactionId())
-                .cron(dto.getCron())
-                .type(dto.getType())
-                .priority(dto.getPriority())
-                // default to shell_worker
-                .script(Worker.WORKER_MAP.get(Worker.Type.SHELL).parseScript(dto.getScript()))
-                .status(TaskStatus.WAITING)
-                .startTime(LocalDateTime.now())
-                .build();
     }
 
     /**
@@ -168,10 +130,74 @@ public class RegisterApplication {
     /**
      * 获取下一个全局事务Id
      * */
+    @NotNull
     public Long getNextTransactionId() {
         final AtomicLong globalTransactionId = nodeInstancePool.getGlobalTransactionId();
         globalTransactionId.set(taskService.getNextTransactionId());
         return globalTransactionId.incrementAndGet();
+    }
+
+    /**
+     * 恢复定时任务
+     * */
+    @NotNull
+    protected List<FutureTask> recoverFutureTasks(List<FutureTask> futureTasks) {
+        List<FutureTask> failures = new ArrayList<>();
+        for (FutureTask futureTask : futureTasks) {
+            final Task task = Task.parse(futureTask);
+            try {
+                // 移出记录表
+                futureTaskService.removeByTaskUUID(task);
+                if (task.getCron() == null) {
+                    doRecoverOverload(task);
+                } else {
+                    doRecoverFuture(task);
+                }
+            } catch (Exception e) {
+                failures.add(futureTask);
+                log.warn("Some error occurred when publish future task#{}, try reinsert to future_table later", task.getUuid());
+            }
+        }
+        return failures;
+    }
+
+    /**
+     * 恢复超时任务
+     * */
+    @Scheduled(fixedRate = LONGEST_EXECUTION_SECONDS, initialDelay = 3 * 60, timeUnit = TimeUnit.SECONDS)
+    protected void recoverTimeoutTasks() {
+        List<Task> tasks = taskService.queryAllTimeoutWaiting(LONGEST_EXECUTION_SECONDS);
+        for (Task task : tasks) { // failure
+            try {
+                log.info("Failure invoke task({}) restart", task);
+                final Map<String, String> workerIdMap = publish(task);
+                log.info("Failure task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+            } catch (Exception e) {
+                log.warn("Some error occurred when publish task#{}", task.getUuid());
+            }
+        }
+    }
+
+    /**
+     * 处理超负荷任务恢复
+     * */
+    protected void doRecoverOverload(Task task) {
+        final Map<String, String> workerIdMap = publish(task);
+        log.debug("Overload task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+    }
+
+    /**
+     * 处理定时任务恢复
+     * */
+    protected void doRecoverFuture(Task task) {
+        // 删除 tryRecordInsert: 过期的移除 -> 发布普通任务; 未过期的移除 -> 重新发布定时任务
+        taskService.removeByUUID(task);
+        if (CronParser.timeout(task.getCron(), task.getStartTime().toInstant(ZoneOffset.ofHours(8)).toEpochMilli())) {
+            task.setCron(null);
+            log.debug("Future task#{} timeout", task.getUuid());
+        }
+        final Map<String, String> workerIdMap = publish(task);
+        log.info("Future task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
     }
 
     /**
@@ -251,20 +277,6 @@ public class RegisterApplication {
         final String workerId = proxy.dispatchTask(task);
         final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
         return Collections.singletonMap(lastAddress.getHostString() + ':' + lastAddress.getPort(), workerId);
-    }
-
-    @Scheduled(fixedRate = LONGEST_EXECUTION_SECONDS, initialDelay = 3 * 60, timeUnit = TimeUnit.SECONDS)
-    protected void recoverFailureTasks() {
-        List<Task> tasks = taskService.queryAllTimeoutWaiting(LONGEST_EXECUTION_SECONDS);
-        for (Task task : tasks) { // failure
-            try {
-                log.info("Failure invoke task({}) restart", task);
-                final Map<String, String> workerIdMap = publish(task);
-                log.info("Failure task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
-            } catch (Exception e) {
-                log.warn("Some error occurred when publish task#{}", task.getUuid());
-            }
-        }
     }
 
 }
