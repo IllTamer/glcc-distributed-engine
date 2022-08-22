@@ -2,7 +2,7 @@ package dev.jianmu.engine.api.controller;
 
 import dev.jianmu.engine.api.config.application.RegisterApplication;
 import dev.jianmu.engine.api.dto.TaskDTO;
-import dev.jianmu.engine.api.pojo.AjaxResult;
+import dev.jianmu.engine.api.pojo.ResponseResult;
 import dev.jianmu.engine.provider.Task;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -25,9 +25,9 @@ public class RegisterController {
      * */
     @NotNull
     @PostMapping
-    public AjaxResult createTask(@RequestBody TaskDTO taskDTO) {
+    public ResponseResult createTask(@RequestBody TaskDTO taskDTO) {
         Task task = taskDTO.format();
-        return AjaxResult.success(registerApplication.submitTask(task));
+        return ResponseResult.success(registerApplication.submitTask(task));
     }
 
     /**
@@ -36,9 +36,9 @@ public class RegisterController {
      * 在 #submitTask() 前调用，用于获取传入任务的全局序列号
      * */
     @GetMapping("/obtain")
-    public AjaxResult obtainTaskId() {
+    public ResponseResult obtainTaskId() {
         registerApplication.refreshNodes();
-        return AjaxResult.success(registerApplication.getNextTransactionId());
+        return ResponseResult.success(registerApplication.getNextTransactionId());
     }
 
 }

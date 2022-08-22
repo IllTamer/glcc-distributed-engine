@@ -1,7 +1,7 @@
 package dev.jianmu.engine.api.controller;
 
 import dev.jianmu.engine.api.config.application.MonitorApplication;
-import dev.jianmu.engine.api.pojo.AjaxResult;
+import dev.jianmu.engine.api.pojo.ResponseResult;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,8 +23,8 @@ public class MonitorController {
      * */
     @NotNull
     @PutMapping("/pause/{uuid}")
-    public AjaxResult pauseTask(@PathVariable String uuid) {
-        return AjaxResult.success(monitorApplication.pauseTask(uuid));
+    public ResponseResult pauseTask(@PathVariable String uuid) {
+        return ResponseResult.success(monitorApplication.pauseTask(uuid));
     }
 
     /**
@@ -35,8 +35,8 @@ public class MonitorController {
      * */
     @NotNull
     @PutMapping("/continue/{uuid}")
-    public AjaxResult continueTask(@PathVariable String uuid) {
-        return AjaxResult.success(monitorApplication.continueTask(uuid));
+    public ResponseResult continueTask(@PathVariable String uuid) {
+        return ResponseResult.success(monitorApplication.continueTask(uuid));
     }
 
     /**
@@ -45,8 +45,8 @@ public class MonitorController {
      * */
     @NotNull
     @GetMapping("/{uuid}")
-    public AjaxResult checkProgress(@PathVariable String uuid) {
-        return AjaxResult.success(monitorApplication.checkProgress(uuid));
+    public ResponseResult checkProgress(@PathVariable String uuid) {
+        return ResponseResult.success(monitorApplication.checkProgress(uuid));
     }
 
 }
