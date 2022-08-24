@@ -28,8 +28,8 @@ public class EngineLock {
     /**
      * 加锁业务代码
      * */
-    @TableField("business_code")
-    private String businessCode;
+    @TableField("translate_id")
+    private Long translateId;
 
     /**
      * 更新时间

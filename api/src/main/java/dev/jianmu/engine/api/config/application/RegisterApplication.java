@@ -76,8 +76,7 @@ public class RegisterApplication {
         EngineLock lock = null;
         try {
             // 分布式锁，入锁
-            // TODO 处理拒绝新增、更改加锁对象
-            lock = pessimisticLockService.tryLock(SUBMIT_BUSINESS_CODE);
+            lock = pessimisticLockService.tryLock(task.getTransactionId());
             dispatchInfos = publish(task);
             final boolean unlock = pessimisticLockService.unlock(lock);
             Assert.isTrue(unlock, "Unlock failed: Lock(%s)", lock);

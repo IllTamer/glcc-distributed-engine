@@ -69,8 +69,6 @@ public class EngineConfiguration extends AbstractServerBootstrap implements Appl
     }
 
     /**
-     * TODO 初始化时/定期检查 恢复 Table: future 中的未执行任务 （普通/定时）
-     *  考虑定时任务恢复时过期的情况
      * {@link ApplicationRunner}
      * */
     @Async
