@@ -6,8 +6,6 @@ import dev.jianmu.engine.rpc.annotation.RpcService;
 import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * 本机状态获取 Service
@@ -20,12 +18,8 @@ public class LocalStateServiceImpl implements LocalStateService {
     /**
      * @return CPU使用率，内存使用率
      * */
-    public Map<String, Object> info() {
+    public LocalState info() {
         OperatingSystemMXBean bean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-
-        Map<String, Object> map = new HashMap<>();
-        map.put(PROCESS_CPU_LOAD, twoDecimal(bean.getProcessCpuLoad() * 100));
-        map.put(SYSTEM_CPU_LOAD, twoDecimal(bean.getSystemCpuLoad() * 100));
 
         long totalPhysicalMemorySize = bean.getTotalPhysicalMemorySize();
         long freePhysicalMemorySize = bean.getFreePhysicalMemorySize();
@@ -33,10 +27,13 @@ public class LocalStateServiceImpl implements LocalStateService {
         double freeMemory = 1D * freePhysicalMemorySize / _1GB;
         double memoryUseRatio = 1D * (totalPhysicalMemorySize - freePhysicalMemorySize) / totalPhysicalMemorySize * 100;
 
-        map.put(MEMORY_USE_RATIO, twoDecimal(memoryUseRatio));
-        map.put(TOTAL_MEMORY, twoDecimal(totalMemory));
-        map.put(FREE_MEMORY, twoDecimal(freeMemory));
-        return map;
+        return LocalState.builder()
+                .processCpuLoad(twoDecimal(bean.getProcessCpuLoad() * 100))
+                .systemCpuLoad(twoDecimal(bean.getSystemCpuLoad() * 100))
+                .memoryUseRatio(twoDecimal(memoryUseRatio))
+                .totalMemory(twoDecimal(totalMemory))
+                .freeMemory(twoDecimal(freeMemory))
+                .build();
     }
 
     public static double twoDecimal(double doubleValue) {

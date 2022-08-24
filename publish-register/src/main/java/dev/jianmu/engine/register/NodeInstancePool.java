@@ -125,7 +125,8 @@ public class NodeInstancePool {
         try {
             RpcClientProxy copyProxy = rpcClientProxy.copy(name -> node.getAddress());
             final LocalStateService localStateService = copyProxy.getProxy(LocalStateService.class);
-            Map<String, Object> nodeInfo = localStateService.info();
+            HashMap<String, Object> nodeInfo = new HashMap<>();
+            nodeInfo.put("localState", localStateService.info());
             node.setNodeInfo(nodeInfo);
             final ConsumerService consumerService = copyProxy.getProxy(ConsumerService.class);
             node.getNodeInfo().put("taskThreadPoolUsage", consumerService.getTaskThreadPoolUsage());

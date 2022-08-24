@@ -13,6 +13,7 @@ import dev.jianmu.engine.consumer.ConsumerService;
 import dev.jianmu.engine.monitor.event.ExecutionNode;
 import dev.jianmu.engine.provider.FutureTask;
 import dev.jianmu.engine.provider.Task;
+import dev.jianmu.engine.register.DispatchInfo;
 import dev.jianmu.engine.register.NodeInstancePool;
 import dev.jianmu.engine.register.OnlineNodeServiceDiscovery;
 import dev.jianmu.engine.register.util.CronParser;
@@ -71,12 +72,13 @@ public class RegisterApplication {
     public TaskPublishVO submitTask(Task task) {
         // 更新Node状态(CPU使用率，内存使用率等)
         refreshNodes();
-        Map<String, String> workerIdMap = null;
+        List<DispatchInfo> dispatchInfos = null;
         EngineLock lock = null;
         try {
-            // 分布式锁，入锁(拒绝新增)
+            // 分布式锁，入锁
+            // TODO 处理拒绝新增、更改加锁对象
             lock = pessimisticLockService.tryLock(SUBMIT_BUSINESS_CODE);
-            workerIdMap = publish(task);
+            dispatchInfos = publish(task);
             final boolean unlock = pessimisticLockService.unlock(lock);
             Assert.isTrue(unlock, "Unlock failed: Lock(%s)", lock);
             lock = null;
@@ -89,7 +91,7 @@ public class RegisterApplication {
         }
         return TaskPublishVO.builder()
                 .uuid(task.getUuid())
-                .workerIdMap(workerIdMap)
+                .dispatchInfos(dispatchInfos)
                 .build();
     }
 
@@ -170,8 +172,8 @@ public class RegisterApplication {
         for (Task task : tasks) { // failure
             try {
                 log.info("Failure invoke task({}) restart", task);
-                final Map<String, String> workerIdMap = publish(task);
-                log.info("Failure task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+                final List<DispatchInfo> dispatchInfos = publish(task);
+                log.info("Failure task#{} recovery, dispatchInfos={}", task.getUuid(), dispatchInfos);
             } catch (Exception e) {
                 log.warn("Some error occurred when publish task#{}", task.getUuid());
             }
@@ -182,8 +184,8 @@ public class RegisterApplication {
      * 处理超负荷任务恢复
      * */
     protected void doRecoverOverload(Task task) {
-        final Map<String, String> workerIdMap = publish(task);
-        log.debug("Overload task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+        final List<DispatchInfo> dispatchInfos = publish(task);
+        log.debug("Overload task#{} recovery, dispatchInfos={}", task.getUuid(), dispatchInfos);
     }
 
     /**
@@ -196,8 +198,8 @@ public class RegisterApplication {
             task.setCron(null);
             log.debug("Future task#{} timeout", task.getUuid());
         }
-        final Map<String, String> workerIdMap = publish(task);
-        log.info("Future task#{} recovery, workerIdMap={}", task.getUuid(), workerIdMap);
+        final List<DispatchInfo> dispatchInfos = publish(task);
+        log.info("Future task#{} recovery, dispatchInfos={}", task.getUuid(), dispatchInfos);
     }
 
     /**
@@ -208,9 +210,9 @@ public class RegisterApplication {
      *  3. Key: 'future', Value: id (FutureTask)
      * */
     @NotNull
-    protected Map<String, String> publish(Task task) throws PublishException {
+    protected List<DispatchInfo> publish(Task task) throws PublishException {
         if (nodeInstancePool.isAllOverload()) {
-            return doPublishOverload(task);
+            return Collections.singletonList(doPublishOverload(task));
         }
         // 预先插入一次，校验有无重复 transactionId
         final boolean noRepeatId = taskService.tryRecordInsert(task);
@@ -219,7 +221,7 @@ public class RegisterApplication {
         // 定时分发检测
         if (task.getCron() != null) {
             if (noRepeatId) {
-                return doPublishFuture(task);
+                return Collections.singletonList(doPublishFuture(task));
             }
             log.debug("分发定时任务 Task({})", task.getUuid());
             // remove schedule task in future_task table
@@ -229,54 +231,63 @@ public class RegisterApplication {
             return doPublishIterate(task);
         } else { // TYPE.DISPATCH
             final RpcClientProxy rpcClientProxy = nodeInstancePool.getRpcClientProxy();
-            return doPublishDispatch(task, rpcClientProxy);
+            return Collections.singletonList(doPublishDispatch(task, rpcClientProxy));
         }
     }
 
     /**
      * 处理超负荷任务
      * */
-    protected Map<String, String> doPublishOverload(Task task) {
+    protected DispatchInfo doPublishOverload(Task task) {
         final FutureTask futureTask = FutureTask.parse(task);
         // 储存因所有节点不可用而阻塞的任务
         futureTaskService.save(futureTask);
-        return Collections.singletonMap("overload", futureTask.getId().toString());
+        return DispatchInfo.builder()
+                .status(DispatchInfo.OVERLOAD)
+                .build();
     }
 
     /**
      * 处理定时任务
      * */
-    protected Map<String, String> doPublishFuture(Task task) {
+    protected DispatchInfo doPublishFuture(Task task) {
         log.debug("注册定时分发任务 Task({})-corn:{}", task.getUuid(), task.getCron());
         scheduledThreadPool.schedule(() -> publish(task), CronParser.parse(task.getCron()), CronParser.TIME_UNIT);
         final FutureTask futureTask = FutureTask.parse(task);
         futureTaskService.save(futureTask);
-        return Collections.singletonMap("future", futureTask.getId().toString());
+        return DispatchInfo.builder()
+                .status(DispatchInfo.FUTURE)
+                .build();
     }
 
     /**
      * 处理迭代任务
      * */
-    protected Map<String, String> doPublishIterate(Task task) {
-        Map<String, String> workerIdMap = new HashMap<>();
+    protected List<DispatchInfo> doPublishIterate(Task task) {
         // 创建轮询代理
         final RpcClientProxy rpcClientProxy = nodeInstancePool.getRpcClientProxy()
                 .copy(new OnlineNodeServiceDiscovery(nodeInstancePool, new RoundRobinLoadBalancer()));
         final int size = nodeInstancePool.getTempExecutionNodes().size();
+        List<DispatchInfo> dispatchInfos = new ArrayList<>(size);
         for (int i = 0; i < size; ++i) {
-            workerIdMap.putAll(doPublishDispatch(task, rpcClientProxy));
+            dispatchInfos.add(doPublishDispatch(task, rpcClientProxy));
         }
-        return workerIdMap;
+        return dispatchInfos;
     }
 
     /**
      * 处理调度任务
      * */
-    protected Map<String, String> doPublishDispatch(Task task, RpcClientProxy rpcClientProxy) {
+    protected DispatchInfo doPublishDispatch(Task task, RpcClientProxy rpcClientProxy) {
         final ConsumerService proxy = rpcClientProxy.getProxy(ConsumerService.class);
         final String workerId = proxy.dispatchTask(task);
         final InetSocketAddress lastAddress = rpcClientProxy.getClient().getLastAddress();
-        return Collections.singletonMap(lastAddress.getHostString() + ':' + lastAddress.getPort(), workerId);
+        return DispatchInfo.builder()
+                .host(lastAddress.getHostString())
+                .port(lastAddress.getPort())
+                .workerId(workerId)
+                .status(DispatchInfo.DISPATCHED)
+                .build();
     }
 
 }

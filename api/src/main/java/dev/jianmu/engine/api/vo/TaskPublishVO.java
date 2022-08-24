@@ -1,9 +1,10 @@
 package dev.jianmu.engine.api.vo;
 
+import dev.jianmu.engine.register.DispatchInfo;
 import lombok.Builder;
 import lombok.Data;
 
-import java.util.Map;
+import java.util.List;
 
 /**
  * 任务发布信息 VO
@@ -18,10 +19,8 @@ public class TaskPublishVO {
     private String uuid;
 
     /**
-     * 注册节点的信息
-     *     Key: hostName,
-     *     Value: workerId
+     * 调度信息列表
      * */
-    private Map<String, String> workerIdMap;
+    private List<DispatchInfo> dispatchInfos;
 
 }

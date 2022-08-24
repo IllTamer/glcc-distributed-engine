@@ -1,5 +1,6 @@
 package dev.jianmu.engine.register;
 
+import dev.jianmu.engine.consumer.LocalState;
 import dev.jianmu.engine.consumer.LocalStateServiceImpl;
 import dev.jianmu.engine.monitor.event.ExecutionNode;
 import dev.jianmu.engine.rpc.service.loadbalancer.LoadBalancer;
@@ -56,8 +57,9 @@ public class WeightedMinLoadLoadBalancer implements LoadBalancer {
 
     public static Integer getWeight(ExecutionNode node) {
         Map<String, Object> nodeInfo = node.getNodeInfo();
-        Double memoryLoad = (Double) nodeInfo.get(LocalStateServiceImpl.MEMORY_USE_RATIO);
-        Double cpuLoad = (Double) nodeInfo.get(LocalStateServiceImpl.SYSTEM_CPU_LOAD);
+        final LocalState localState = (LocalState) nodeInfo.get("localState");
+        Double memoryLoad = localState.getMemoryUseRatio();
+        Double cpuLoad = localState.getSystemCpuLoad();
         Assert.notNull(memoryLoad, "Uninitialized node");
         Assert.notNull(cpuLoad, "Uninitialized node");
         final double pm = 100 - memoryLoad;
