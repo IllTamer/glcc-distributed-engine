@@ -7,15 +7,19 @@
 
 - 课题介绍： https://v8zrmetkbg.feishu.cn/wiki/wikcnArzBZWw8QUihDuB0TorUGe
 
-#### 整体架构
+### 整体架构
 
-**任务引擎架构图**
+#### 任务引擎架构图
 
 ![](doc/image/技术架构图.png)
 
-**任务提交流程图**
+#### 任务提交流程图
 
 ![](doc/image/任务提交流程图.png)
+
+#### 任务执行流程图
+
+![](doc/image/任务执行流程图.png)
 
 #### 包结构
 
