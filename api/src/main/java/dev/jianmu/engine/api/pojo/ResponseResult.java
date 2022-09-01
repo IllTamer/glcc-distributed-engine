@@ -1,9 +1,8 @@
 package dev.jianmu.engine.api.pojo;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -12,24 +11,10 @@ import java.util.HashMap;
  * 响应结果实体类
  */
 @Slf4j
+@Data
 public class ResponseResult implements Serializable {
 
     private static final long serialVersionUID = 465217954329411031L;
-
-    /**
-     * 状态码
-     */
-    public static final String CODE_TAG = "status";
-
-    /**
-     * 返回内容
-     */
-    public static final String MSG_TAG = "msg";
-
-    /**
-     * 数据对象
-     */
-    public static final String DATA_TAG = "data";
 
     public static final int STATUS_SUCCESS = 0;
     public static final int STATUS_WARNING = 301;
@@ -39,7 +24,9 @@ public class ResponseResult implements Serializable {
     public static final String MSG_WARNING = "warning";
     public static final String MSG_ERROR = "error";
 
-    private final HashMap<String, Object> data;
+    private final Integer status;
+    private final String msg;
+    private final Object data;
 
     /**
      * 初始化一个默认成功的响应结果
@@ -65,26 +52,10 @@ public class ResponseResult implements Serializable {
      * @param msg  返回内容
      * @param data 数据对象
      */
-    public ResponseResult(int status, String msg, Object data) {
-        this.data = new HashMap<>();
-        this.data.put(CODE_TAG, status);
-        this.data.put(MSG_TAG, msg);
-        if (data != null) {
-            this.data.put(DATA_TAG, data);
-        }
-    }
-
-    /**
-     * 添加传输数据对象
-     *
-     * @param key 键
-     * @param value 值
-     * @return 数据对象
-     */
-    @NonNull
-    public ResponseResult put(String key, Object value) {
-        this.data.put(key, value);
-        return this;
+    public ResponseResult(int status, String msg, @Nullable Object data) {
+        this.status = status;
+        this.msg = msg;
+        this.data = data;
     }
 
     /**
@@ -152,7 +123,7 @@ public class ResponseResult implements Serializable {
      * @param data 数据对象
      * @return 警告消息
      */
-    public static ResponseResult warn(String msg, Object data) {
+    public static ResponseResult warn(String msg, HashMap<String, Object> data) {
         return new ResponseResult(STATUS_WARNING, msg, data);
     }
 
@@ -182,22 +153,8 @@ public class ResponseResult implements Serializable {
      * @param data 数据对象
      * @return 错误消息
      */
-    public static ResponseResult error(String msg, Object data) {
+    public static ResponseResult error(String msg, HashMap<String, Object> data) {
         return new ResponseResult(STATUS_ERROR, msg, data);
-    }
-
-    /**
-     * @return json
-     * */
-    @Override
-    public String toString() {
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            return mapper.writeValueAsString(this.data);
-        } catch (JsonProcessingException e) {
-            log.error("Some error occurred when serializing data: {}", data, e);
-        }
-        return "{}";
     }
 
 }

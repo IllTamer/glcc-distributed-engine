@@ -1,5 +1,6 @@
 package dev.jianmu.engine.monitor.event.filter;
 
+import dev.jianmu.engine.consumer.LocalState;
 import dev.jianmu.engine.monitor.event.ExecutionNode;
 import org.jetbrains.annotations.NotNull;
 
@@ -22,8 +23,9 @@ public class NodeStateFilter extends AbstractAvailabilityFilter {
         return tempExecutionNodes.stream()
                 .filter(node -> {
                     final Map<String, Object> info = node.getNodeInfo();
-                    final double systemCpuLoad = (double) info.get("systemCpuLoad");
-                    final double memoryUseRatio = (double) info.get("memoryUseRatio");
+                    final LocalState localState = (LocalState) info.get("localState");
+                    final double systemCpuLoad = localState.getSystemCpuLoad();
+                    final double memoryUseRatio = localState.getMemoryUseRatio();
                     return systemCpuLoad <= 85D && memoryUseRatio <= 90D;
                 }).collect(Collectors.toList());
     }

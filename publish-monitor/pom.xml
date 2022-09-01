@@ -21,7 +21,7 @@
     <dependencies>
         <dependency>
             <groupId>dev.jianmu.engine</groupId>
-            <artifactId>provider-provider</artifactId>
+            <artifactId>publish-consumer</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

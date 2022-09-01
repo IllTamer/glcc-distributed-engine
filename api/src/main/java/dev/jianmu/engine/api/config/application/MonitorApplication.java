@@ -6,8 +6,8 @@ import dev.jianmu.engine.api.vo.TaskProcessVO;
 import dev.jianmu.engine.api.vo.TaskPublishVO;
 import dev.jianmu.engine.provider.Task;
 import dev.jianmu.engine.provider.TaskStatus;
-import dev.jianmu.engine.rpc.util.Assert;
 import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
 
 @Component
 public class MonitorApplication {
@@ -32,7 +32,8 @@ public class MonitorApplication {
 
     public TaskPublishVO continueTask(String uuid) {
         final Task task = taskService.queryByUUID(uuid);
-        Assert.isTrue(task.getStatus() == TaskStatus.PAUSE, "Wrong task status: {}", task.getStatus());
+        Assert.notNull(task, "Can't find paused task#" + uuid);
+        Assert.isTrue(task.getStatus() == TaskStatus.PAUSE, "Wrong task status: " + task.getStatus());
         task.setStatus(TaskStatus.WAITING);
         return registerApplication.submitTask(task);
     }
